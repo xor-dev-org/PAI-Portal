@@ -38,3 +38,5 @@ build
 
 # OS
 Thumbs.db
+
+.ignore
