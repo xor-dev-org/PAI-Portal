@@ -7,7 +7,7 @@ export const formatCurrency = (amount: number, currency: string = 'USD'): string
 
 export const formatDate = (date: string | Date, format: 'short' | 'long' = 'short'): string => {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
+
   if (format === 'long') {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
@@ -15,7 +15,7 @@ export const formatDate = (date: string | Date, format: 'short' | 'long' = 'shor
       day: 'numeric',
     }).format(dateObj);
   }
-  
+
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
