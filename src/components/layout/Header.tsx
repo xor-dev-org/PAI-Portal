@@ -9,17 +9,18 @@ import {
   Menu,
   MenuItem,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import {
   Brightness4,
   Brightness7,
-  AccountCircle,
   Logout,
   Settings,
   Menu as MenuIcon,
 } from '@mui/icons-material';
 import { useThemeMode } from '@/theme/ThemeProvider';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -28,6 +29,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { mode, toggleTheme } = useThemeMode();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -38,9 +40,36 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     setAnchorEl(null);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     handleMenuClose();
-    await logout();
+    logout();
+    navigate('/login');
+  };
+
+  const getRoleDisplay = (role: string) => {
+    switch(role) {
+      case 'ADMIN':
+        return 'Admin';
+      case 'PROCUREMENT_SPECIALIST':
+        return 'Procurement Specialist';
+      case 'SUPPLIER':
+        return 'Supplier';
+      default:
+        return role;
+    }
+  };
+
+  const getRoleColor = (role: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+    switch(role) {
+      case 'ADMIN':
+        return 'error';
+      case 'PROCUREMENT_SPECIALIST':
+        return 'primary';
+      case 'SUPPLIER':
+        return 'secondary';
+      default:
+        return 'default';
+    }
   };
 
   return (
@@ -57,10 +86,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </IconButton>
 
         <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          PAI Portal
+          Supply Chain Portal
         </Typography>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {user && (
+            <Chip 
+              label={getRoleDisplay(user.role)} 
+              color={getRoleColor(user.role)}
+              size="small"
+              sx={{ display: { xs: 'none', sm: 'flex' } }}
+            />
+          )}
+
           <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
             <IconButton onClick={toggleTheme} color="inherit">
               {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
@@ -72,10 +110,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               <Tooltip title="Account settings">
                 <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
                   <Avatar
-                    alt={`${user.firstName} ${user.lastName}`}
-                    src={user.avatarUrl}
-                    sx={{ width: 32, height: 32 }}
-                  />
+                    alt={user.name}
+                    sx={{ width: 36, height: 36, bgcolor: 'secondary.main' }}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </Avatar>
                 </IconButton>
               </Tooltip>
               <Menu
@@ -83,10 +122,12 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
                 onClick={handleMenuClose}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
                 <MenuItem disabled>
-                  <Typography variant="body2">
-                    {user.firstName} {user.lastName}
+                  <Typography variant="body2" fontWeight="bold">
+                    {user.name}
                   </Typography>
                 </MenuItem>
                 <MenuItem disabled>
@@ -94,11 +135,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     {user.email}
                   </Typography>
                 </MenuItem>
-                <MenuItem onClick={handleMenuClose}>
-                  <AccountCircle sx={{ mr: 1 }} fontSize="small" />
-                  Profile
-                </MenuItem>
-                <MenuItem onClick={handleMenuClose}>
+                <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }}>
                   <Settings sx={{ mr: 1 }} fontSize="small" />
                   Settings
                 </MenuItem>

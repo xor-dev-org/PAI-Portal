@@ -13,7 +13,7 @@ export interface UsePaginationReturn extends PaginationState {
 
 export function usePagination(
   initialPage: number = 0,
-  initialPageSize: number = 25
+  initialPageSize: number = 12
 ): UsePaginationReturn {
   const [page, setPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);

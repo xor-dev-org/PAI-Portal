@@ -2,28 +2,13 @@ import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider } from '@mui/material/styles';
 import { lightTheme } from '@/theme/theme';
-import authReducer from '@/app/slices/authSlice';
-import purchaseOrdersReducer from '@/features/purchaseOrders/slice';
+import { store } from '@/app/store';
 
 export function renderWithProviders(
   ui: ReactElement,
-  {
-    preloadedState = {},
-    store = configureStore({
-      reducer: {
-        auth: authReducer,
-        purchaseOrders: purchaseOrdersReducer,
-      },
-      preloadedState,
-    }),
-    ...renderOptions
-  }: {
-    preloadedState?: any;
-    store?: any;
-  } & Omit<RenderOptions, 'wrapper'> = {}
+  renderOptions: Omit<RenderOptions, 'wrapper'> = {}
 ) {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (

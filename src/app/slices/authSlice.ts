@@ -1,5 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { User, UserRole } from '@/models';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { User, AuthResponse, LoginRequest, SignupRequest } from '@/models';
+import { authService } from '@/api/services/authService';
 
 export interface AuthState {
   user: User | null;
@@ -9,43 +10,55 @@ export interface AuthState {
 }
 
 const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
+  user: authService.getCurrentUser(),
+  isAuthenticated: !!authService.getToken(),
   isLoading: false,
   error: null,
 };
+
+// Async thunks
+export const msalLogin = createAsyncThunk(
+  'auth/msalLogin',
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await authService.msalLogin(email);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Login failed');
+    }
+  }
+);
+
+export const supplierLogin = createAsyncThunk(
+  'auth/supplierLogin',
+  async (credentials: LoginRequest, { rejectWithValue }) => {
+    try {
+      const response = await authService.supplierLogin(credentials);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Login failed');
+    }
+  }
+);
+
+export const supplierSignup = createAsyncThunk(
+  'auth/supplierSignup',
+  async (data: SignupRequest, { rejectWithValue }) => {
+    try {
+      const response = await authService.supplierSignup(data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Signup failed');
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    login: (state, action: PayloadAction<{ email: string; password: string }>) => {
-      const mockUser: User = {
-        id: '1',
-        email: action.payload.email,
-        firstName: 'Demo',
-        lastName: 'User',
-        role: UserRole.BUYER,
-        department: 'Procurement',
-        permissions: ['read', 'write'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      state.user = mockUser;
-      state.isAuthenticated = true;
-      state.error = null;
-    },
     logout: (state) => {
-      state.user = null;
-      state.isAuthenticated = false;
-      state.error = null;
-    },
-    setUser: (state, action: PayloadAction<User>) => {
-      state.user = action.payload;
-      state.isAuthenticated = true;
-    },
-    clearAuth: (state) => {
+      authService.logout();
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
@@ -54,7 +67,59 @@ const authSlice = createSlice({
       state.error = null;
     },
   },
+  extraReducers: (builder) => {
+    // MSAL Login
+    builder
+      .addCase(msalLogin.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(msalLogin.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(msalLogin.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Supplier Login
+    builder
+      .addCase(supplierLogin.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(supplierLogin.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(supplierLogin.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Supplier Signup
+    builder
+      .addCase(supplierSignup.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(supplierSignup.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(supplierSignup.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+  },
 });
 
-export const { login, logout, setUser, clearAuth, clearError } = authSlice.actions;
+export const { logout, clearError } = authSlice.actions;
 export default authSlice.reducer;

@@ -20,7 +20,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
-    "prepare": "husky",
+    "prepare": "husky install",
     "start": "vite"
   },
   "dependencies": {

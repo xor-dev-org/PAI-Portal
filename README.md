@@ -128,37 +128,37 @@ PAI-Portal/
 
 ## 🛠️ Tech Stack
 
-| Category         | Technology                                         |
-| ---------------- | -------------------------------------------------- |
-| **Language**     | TypeScript 5.5                                     |
-| **Framework**    | React 18.3                                         |
-| **Build Tool**   | Vite 5.3                                           |
-| **UI Library**   | MUI 5.15 + MUI X (DataGrid, Charts, Date Pickers)  |
-| **State**        | Redux Toolkit 2.2 + Context API (theme)            |
-| **HTTP Client**  | Axios 1.7 (with interceptors)                      |
-| **Routing**      | React Router 6.24                                  |
-| **Testing**      | Vitest 1.6 + React Testing Library 15              |
-| **Code Quality** | ESLint 8.57 + Prettier 3.3 + Husky 9 + lint-staged |
-| **Utilities**    | date-fns 3.6, lodash-es 4.17, clsx 2.1             |
+| Category           | Technology                                           |
+| ------------------ | ---------------------------------------------------- |
+| **Language**       | TypeScript 5.5                                       |
+| **Framework**      | React 18.3                                           |
+| **Build Tool**     | Vite 5.3                                             |
+| **UI Library**     | MUI 5.15 + MUI X (DataGrid, Charts, Date Pickers)   |
+| **State**          | Redux Toolkit 2.2 + Context API (theme)             |
+| **HTTP Client**    | Axios 1.7 (with interceptors)                        |
+| **Routing**        | React Router 6.24                                    |
+| **Testing**        | Vitest 1.6 + React Testing Library 15               |
+| **Code Quality**   | ESLint 8.57 + Prettier 3.3 + Husky 9 + lint-staged  |
+| **Utilities**      | date-fns 3.6, lodash-es 4.17, clsx 2.1              |
 
 ---
 
 ## 📜 Available Scripts
 
-| Script               | Description                                            |
-| -------------------- | ------------------------------------------------------ |
-| `npm run dev`        | Start development server (localhost:3000)              |
-| `npm run build`      | Build production bundle                                |
-| `npm run preview`    | Preview production build locally                       |
-| `npm run lint`       | Run ESLint                                             |
-| `npm run lint:fix`   | Run ESLint and auto-fix issues                         |
-| `npm run format`     | Format code with Prettier                              |
-| `npm run typecheck`  | Type-check TypeScript without emitting files           |
-| `npm run test`       | Run tests once                                         |
-| `npm run test:watch` | Run tests in watch mode                                |
-| `npm run test:ui`    | Run tests with Vitest UI                               |
-| `npm run coverage`   | Generate test coverage report                          |
-| `npm run prepare`    | Install Husky hooks (runs automatically after install) |
+| Script            | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `npm run dev`     | Start development server (localhost:3000)            |
+| `npm run build`   | Build production bundle                              |
+| `npm run preview` | Preview production build locally                     |
+| `npm run lint`    | Run ESLint                                           |
+| `npm run lint:fix`| Run ESLint and auto-fix issues                       |
+| `npm run format`  | Format code with Prettier                            |
+| `npm run typecheck` | Type-check TypeScript without emitting files       |
+| `npm run test`    | Run tests once                                       |
+| `npm run test:watch` | Run tests in watch mode                           |
+| `npm run test:ui` | Run tests with Vitest UI                             |
+| `npm run coverage`| Generate test coverage report                        |
+| `npm run prepare` | Install Husky hooks (runs automatically after install) |
 
 ---
 
@@ -168,7 +168,7 @@ Copy `.env.example` to `.env` and configure:
 
 ```bash
 # API Configuration
-VITE_API_BASE_URL=https://api.example.com/v1
+VITE_API_BASE_URL=https://http://127.0.0.1:8000
 VITE_API_TIMEOUT=30000
 
 # Authentication
@@ -203,7 +203,6 @@ VITE_ENV=development
 ### Token Refresh Flow
 
 The Axios interceptor automatically handles 401 responses:
-
 1. Intercepts 401 errors
 2. Attempts to refresh the access token using the refresh token
 3. Retries the original request with the new token
@@ -244,7 +243,7 @@ Edit `src/theme/theme.ts`:
 ```typescript
 const brandColors = {
   primary: {
-    main: '#1976d2', // Change to your brand color
+    main: '#1976d2',  // Change to your brand color
     light: '#42a5f5',
     dark: '#1565c0',
   },
@@ -358,7 +357,6 @@ export const store = configureStore({
 ### Axios Configuration
 
 The centralized Axios instance (`src/api/axios.ts`) includes:
-
 - **Base URL** from environment variables
 - **Request interceptor:** Attaches access token and request ID
 - **Response interceptor:** Handles token refresh, error mapping, retry logic
@@ -446,13 +444,11 @@ logger.addTransport((entry) => {
 ### Husky + lint-staged
 
 Pre-commit hooks automatically:
-
 - Run ESLint on staged files
 - Format code with Prettier
 - Type-check TypeScript
 
 Pre-push hooks:
-
 - Run full TypeScript type check
 
 ### GitHub Actions Example
@@ -518,7 +514,6 @@ Output directory: `dist/`
 ### Environment-specific Builds
 
 Use different `.env` files:
-
 - `.env.development`
 - `.env.staging`
 - `.env.production`
@@ -549,19 +544,15 @@ CMD ["serve", "-s", "dist", "-l", "3000"]
 ### Common Issues
 
 **Issue:** "Module not found" errors
-
 - **Solution:** Ensure path aliases in `tsconfig.json` and `vite.config.ts` match
 
 **Issue:** Tests failing with "Cannot find module '@/...'"
-
 - **Solution:** Check `vitest.config.ts` has the same path aliases as `vite.config.ts`
 
 **Issue:** Husky hooks not running
-
 - **Solution:** Run `npm run prepare` to install hooks
 
 **Issue:** ESLint/Prettier conflicts
-
 - **Solution:** ESLint already extends `eslint-config-prettier` to disable conflicting rules
 
 ---
@@ -604,7 +595,6 @@ This is a starter template. Fork and customize for your needs!
 ## 🙏 Acknowledgments
 
 Built with modern best practices for enterprise React applications, focusing on:
-
 - **Type safety** with TypeScript
 - **Developer experience** with Vite and hot module replacement
 - **Code quality** with ESLint, Prettier, and pre-commit hooks
