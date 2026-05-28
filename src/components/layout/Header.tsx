@@ -59,6 +59,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     }
   };
 
+    const getPortalName = (role: string) => {
+    switch(role) {
+      case 'ADMIN':
+        return 'Admin Portal';
+      case 'PROCUREMENT_SPECIALIST':
+        return 'Procurement Cockpit';
+      case 'SUPPLIER':
+        return 'Supplier Collaboration Portal';
+      default:
+        return 'Procurement Cockpit';
+    }
+  };
+
   const getRoleColor = (role: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch(role) {
       case 'ADMIN':
@@ -86,7 +99,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </IconButton>
 
         <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          Supply Chain Portal
+          {getPortalName(user?.role || '')}
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
