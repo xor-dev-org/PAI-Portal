@@ -38,6 +38,6 @@
       "@/theme/*": ["src/theme/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "src/theme/theme.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

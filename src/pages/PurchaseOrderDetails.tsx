@@ -60,6 +60,7 @@ const statusColors: Record<PurchaseOrderStatus, 'default' | 'primary' | 'seconda
   IN_TRANSIT: 'warning',
   DELIVERED: 'success',
   CANCELLED: 'error',
+  IN_PROGRESS: 'default'
 };
 
 const PurchaseOrderDetails: React.FC = () => {

@@ -1,3 +1,4 @@
+import { cookieUtils } from '@/utils/cookies';
 import apiClient from '../axios';
 import { AuthResponse, LoginRequest, SignupRequest } from '@/models';
 
@@ -6,7 +7,7 @@ export const authService = {
   msalLogin: async (email: string): Promise<AuthResponse> => {
     const response = await apiClient.post<AuthResponse>('/auth/msal/login', { email });
     if (response.data.access_token) {
-      localStorage.setItem('access_token', response.data.access_token);
+      cookieUtils.setCookie('access_token', response.data.access_token, 7);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
@@ -16,7 +17,7 @@ export const authService = {
   supplierLogin: async (credentials: LoginRequest): Promise<AuthResponse> => {
     const response = await apiClient.post<AuthResponse>('/auth/supplier/login', credentials);
     if (response.data.access_token) {
-      localStorage.setItem('access_token', response.data.access_token);
+      cookieUtils.setCookie('access_token', response.data.access_token, 7);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
@@ -26,7 +27,7 @@ export const authService = {
   supplierSignup: async (data: SignupRequest): Promise<AuthResponse> => {
     const response = await apiClient.post<AuthResponse>('/auth/supplier/signup', data);
     if (response.data.access_token) {
-      localStorage.setItem('access_token', response.data.access_token);
+      cookieUtils.setCookie('access_token', response.data.access_token, 7);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
@@ -34,7 +35,7 @@ export const authService = {
 
   // Logout
   logout: () => {
-    localStorage.removeItem('access_token');
+    cookieUtils.deleteCookie('access_token');
     localStorage.removeItem('user');
   },
 
@@ -46,6 +47,6 @@ export const authService = {
 
   // Get token
   getToken: () => {
-    return localStorage.getItem('access_token');
+    return cookieUtils.getCookie('access_token');
   },
 };

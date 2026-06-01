@@ -2,40 +2,40 @@ import { createTheme, ThemeOptions } from '@mui/material/styles';
 
 const brandColors = {
   primary: {
-    main: '#1976d2',
-    light: '#42a5f5',
-    dark: '#1565c0',
-    contrastText: '#fff',
+    main: '#0B1F3A',
+    light: '#1F3A5F',
+    dark: '#071426',
+    contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#dc004e',
-    light: '#e33371',
-    dark: '#9a0036',
-    contrastText: '#fff',
+    main: '#4271b3',
+    light: '#a7c8f5',
+    dark: '#293e5a',
+    contrastText: '#FFFFFF',
   },
   success: {
-    main: '#2e7d32',
-    light: '#4caf50',
-    dark: '#1b5e20',
-    contrastText: '#fff',
+    main: '#2E7D32',
+    light: '#4CAF50',
+    dark: '#1B5E20',
+    contrastText: '#FFFFFF',
   },
   warning: {
-    main: '#ed6c02',
-    light: '#ff9800',
-    dark: '#e65100',
-    contrastText: '#fff',
+    main: '#F59E0B',
+    light: '#FBBF24',
+    dark: '#B45309',
+    contrastText: '#FFFFFF',
   },
   error: {
-    main: '#d32f2f',
-    light: '#ef5350',
-    dark: '#c62828',
-    contrastText: '#fff',
+    main: '#DC2626',
+    light: '#F87171',
+    dark: '#991B1B',
+    contrastText: '#FFFFFF',
   },
   info: {
-    main: '#0288d1',
-    light: '#03a9f4',
-    dark: '#01579b',
-    contrastText: '#fff',
+    main: '#2563EB',
+    light: '#60A5FA',
+    dark: '#1D4ED8',
+    contrastText: '#FFFFFF',
   },
 };
 
@@ -110,7 +110,7 @@ export const lightTheme = createTheme({
     mode: 'light',
     ...brandColors,
     background: {
-      default: '#f5f5f5',
+      default: '#ffffff',
       paper: '#ffffff',
     },
     text: {

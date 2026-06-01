@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -10,6 +10,7 @@ import {
   DialogActions,
   Button,
   Pagination,
+  useTheme,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ import { logger } from '@/services/logger';
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const theme = useTheme();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -42,26 +44,26 @@ const PurchaseOrders: React.FC = () => {
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  useEffect(() => {
-    fetchPurchaseOrders();
-  }, [page, pageSize, statusFilter, sortOrder, searchQuery, user]);
 
-  const fetchPurchaseOrders = async () => {
+
+  const fetchPurchaseOrders = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const filters: POFiltersType = {
-        page: page + 1, // API expects 1-based page
+        page: page + 1,
         page_size: pageSize,
         status: statusFilter,
         sort_by: sortOrder as any,
         search: searchQuery,
       };
 
-      logger.info('Fetching purchase orders with filters', filters.status? { status: filters.status } : {});
+      logger.info(
+        'Fetching purchase orders with filters',
+        filters.status ? { status: filters.status } : {}
+      );
 
-      // Add user-specific filters
       if (user?.role === 'SUPPLIER') {
         filters.supplier_id = user.id;
       } else if (user?.role === 'PROCUREMENT_SPECIALIST') {
@@ -77,7 +79,11 @@ const PurchaseOrders: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, statusFilter, sortOrder, searchQuery, user]);
+
+  useEffect(() => {
+    fetchPurchaseOrders();
+  }, [fetchPurchaseOrders]);
 
   const handlePOClick = (po: PurchaseOrder) => {
     navigate(`/purchase-orders/${po.id}`);
@@ -101,7 +107,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'PO Number',
       width: 150,
       renderCell: (params) => (
-        <Typography fontWeight="bold">{params.value}</Typography>
+        <Typography fontWeight="bold" height={'100%'} alignContent={'center'} color={theme.palette.primary.light}>{params.value}</Typography>
       ),
     },
     {
@@ -114,7 +120,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'Status',
       width: 150,
       renderCell: (params) => (
-        <Typography variant="body2">
+        <Typography variant="body2" height={'100%'} alignContent={'center'}>
           {params.value.replace(/_/g, ' ')}
         </Typography>
       ),
@@ -124,7 +130,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'Total Value',
       width: 150,
       renderCell: (params) => (
-        <Typography>
+        <Typography  height={'100%'} alignContent={'center'}>
           {params.row.currency} {params.value.toLocaleString()}
         </Typography>
       ),
