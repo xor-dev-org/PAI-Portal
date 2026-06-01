@@ -99,3 +99,45 @@ export interface Supplier {
   site: string;
   role: UserRole;
 }
+
+// Delegation types
+export enum DelegationStatus {
+  DRAFT = 'DRAFT',
+  APPROVED = 'APPROVED',
+  ACKNOWLEDGED = 'ACKNOWLEDGED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface Delegation {
+  id: string;
+  po_id: string;
+  po_number: string;
+  supplier_name: string;
+  delegated_from_id: string;
+  delegated_from_name: string;
+  delegated_to_id: string;
+  delegated_to_name: string;
+  role: string;
+  start_date: string;
+  end_date: string;
+  status: DelegationStatus;
+  created_date: string;
+  total_value?: number;
+}
+
+export interface DelegationFilters {
+  page?: number;
+  page_size?: number;
+  status?: DelegationStatus | string;
+  search?: string;
+  sort_by?: 'date_asc' | 'date_desc';
+}
+
+export interface DelegationListResponse {
+  page: number;
+  page_size: number;
+  total: number;
+  data: Delegation[];
+}
