@@ -10,6 +10,7 @@ import {
   DialogActions,
   Button,
   Pagination,
+  useTheme,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ import { logger } from '@/services/logger';
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const theme = useTheme();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -105,7 +107,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'PO Number',
       width: 150,
       renderCell: (params) => (
-        <Typography fontWeight="bold">{params.value}</Typography>
+        <Typography fontWeight="bold" height={'100%'} alignContent={'center'} color={theme.palette.primary.light}>{params.value}</Typography>
       ),
     },
     {
@@ -118,7 +120,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'Status',
       width: 150,
       renderCell: (params) => (
-        <Typography variant="body2">
+        <Typography variant="body2" height={'100%'} alignContent={'center'}>
           {params.value.replace(/_/g, ' ')}
         </Typography>
       ),
@@ -128,7 +130,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'Total Value',
       width: 150,
       renderCell: (params) => (
-        <Typography>
+        <Typography  height={'100%'} alignContent={'center'}>
           {params.row.currency} {params.value.toLocaleString()}
         </Typography>
       ),
