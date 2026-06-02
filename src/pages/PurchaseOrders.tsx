@@ -38,7 +38,7 @@ const PurchaseOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('delivery_date_desc');
   const [page, setPage] = useState(0); // DataGrid uses 0-based page
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(50);
   const [rowCount, setRowCount] = useState(0);
 
   // Advanced filters

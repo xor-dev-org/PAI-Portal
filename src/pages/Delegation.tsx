@@ -64,7 +64,7 @@ const DelegationPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('date_desc');
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(50);
 
   // Delete confirmation states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
