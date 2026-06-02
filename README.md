@@ -14,6 +14,7 @@
 ### Prerequisites
 
 - **Node.js** >= 24.16.0 (LTS)
+
 - **npm** or **yarn** or **pnpm**
 
 ### Installation
