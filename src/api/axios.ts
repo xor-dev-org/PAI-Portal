@@ -1,6 +1,7 @@
+import { cookieUtils } from '@/utils/cookies';
 import axios, { AxiosInstance } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
 const apiClient: AxiosInstance = axios.create({
@@ -10,5 +11,32 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor to add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = cookieUtils.getCookie('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      cookieUtils.deleteCookie('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;

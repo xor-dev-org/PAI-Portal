@@ -1,104 +1,143 @@
-export interface PurchaseOrder {
-  id: string;
-  orderNumber: string;
-  supplierId: string;
-  supplierName: string;
-  status: PurchaseOrderStatus;
-  orderDate: string;
-  deliveryDate: string;
-  totalAmount: number;
-  currency: string;
-  lineItems: LineItem[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export enum PurchaseOrderStatus {
-  DRAFT = 'DRAFT',
-  PENDING_APPROVAL = 'PENDING_APPROVAL',
-  APPROVED = 'APPROVED',
-  SENT_TO_SUPPLIER = 'SENT_TO_SUPPLIER',
-  IN_TRANSIT = 'IN_TRANSIT',
-  RECEIVED = 'RECEIVED',
-  CANCELLED = 'CANCELLED',
-}
-
-export interface LineItem {
-  id: string;
-  productId: string;
-  productName: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  unit: string;
-}
-
-export interface Supplier {
-  id: string;
-  name: string;
-  code: string;
-  email: string;
-  phone: string;
-  address: Address;
-  contactPerson: string;
-  rating: number;
-  status: SupplierStatus;
-  category: string;
-  paymentTerms: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export enum SupplierStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  BLACKLISTED = 'BLACKLISTED',
-  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
-}
-
-export interface Address {
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
+// User and Auth types
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  PROCUREMENT_SPECIALIST = 'PROCUREMENT_SPECIALIST',
+  SUPPLIER = 'SUPPLIER',
 }
 
 export interface User {
   id: string;
+  name: string;
   email: string;
-  firstName: string;
-  lastName: string;
   role: UserRole;
-  department: string;
-  permissions: string[];
-  avatarUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  supplier_number?: string;
+  address?: string;
+  site?: string;
 }
 
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  BUYER = 'BUYER',
-  VIEWER = 'VIEWER',
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  role: UserRole;
+  user: User;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  tokenType: string;
+export interface LoginRequest {
+  email: string;
+  password?: string;
 }
 
-export interface LoginCredentials {
+export interface SignupRequest {
+  supplier_number: string;
+  name: string;
   email: string;
   password: string;
+  address: string;
+  site: string;
 }
 
-export interface LoginResponse {
-  user: User;
-  tokens: AuthTokens;
+// Purchase Order types
+export enum PurchaseOrderStatus {
+  CREATED = 'CREATED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  APPROVED = 'APPROVED',
+  SENT_TO_SUPPLIER = 'SENT_TO_SUPPLIER',
+  IN_TRANSIT = 'IN_TRANSIT',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface LineItem {
+  line_number: number;
+  material_code: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  po_number: string;
+  source_system: string;
+  status: PurchaseOrderStatus;
+  supplier_id: string;
+  supplier_name: string;
+  procurement_specialist_id: string;
+  delegated_user_id: string;
+  currency: string;
+  total_value: number;
+  delivery_date: string;
+  payment_terms: string;
+  mrp_exceptions: string;
+  created_date: string;
+  line_items: LineItem[];
+}
+
+export interface POListResponse {
+  page: number;
+  page_size: number;
+  total: number;
+  data: PurchaseOrder[];
+}
+
+export interface POFilters {
+  page?: number;
+  page_size?: number;
+  status?: PurchaseOrderStatus | string;
+  supplier_id?: string;
+  procurement_specialist_id?: string;
+  search?: string;
+  sort_by?: 'delivery_date_asc' | 'delivery_date_desc';
+}
+
+export interface Supplier {
+  id: string;
+  supplier_number: string;
+  name: string;
+  email: string;
+  address: string;
+  site: string;
+  role: UserRole;
+}
+
+// Delegation types
+export enum DelegationStatus {
+  DRAFT = 'DRAFT',
+  APPROVED = 'APPROVED',
+  ACKNOWLEDGED = 'ACKNOWLEDGED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface Delegation {
+  id: string;
+  po_id: string;
+  po_number: string;
+  supplier_name: string;
+  delegated_from_id: string;
+  delegated_from_name: string;
+  delegated_to_id: string;
+  delegated_to_name: string;
+  role: string;
+  start_date: string;
+  end_date: string;
+  status: DelegationStatus;
+  created_date: string;
+  total_value?: number;
+}
+
+export interface DelegationFilters {
+  page?: number;
+  page_size?: number;
+  status?: DelegationStatus | string;
+  search?: string;
+  sort_by?: 'date_asc' | 'date_desc';
+}
+
+export interface DelegationListResponse {
+  page: number;
+  page_size: number;
+  total: number;
+  data: Delegation[];
 }

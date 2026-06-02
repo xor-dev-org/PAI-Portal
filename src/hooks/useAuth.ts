@@ -1,24 +1,29 @@
 import { useAppSelector, useAppDispatch } from '@/app/store';
-import { login, logout, clearAuth, clearError } from '@/app/slices/authSlice';
+import { logout, msalLogin, supplierLogin, supplierSignup, clearError } from '@/app/slices/authSlice';
+import { LoginRequest, SignupRequest } from '@/models';
 
 export const useAuth = () => {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated, isLoading, error } = useAppSelector((state) => state.auth);
 
-  const handleLogin = (email: string, password: string) => {
-    dispatch(login({ email, password }));
+  const handleMsalLogin = async (email: string) => {
+    return dispatch(msalLogin(email));
+  };
+
+  const handleSupplierLogin = async (credentials: LoginRequest) => {
+    return dispatch(supplierLogin(credentials));
+  };
+
+  const handleSupplierSignup = async (data: SignupRequest) => {
+    return dispatch(supplierSignup(data));
   };
 
   const handleLogout = () => {
     dispatch(logout());
   };
 
-  const clearAuthError = () => {
+  const handleClearError = () => {
     dispatch(clearError());
-  };
-
-  const clearAuthentication = () => {
-    dispatch(clearAuth());
   };
 
   return {
@@ -26,9 +31,10 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading,
     error,
-    login: handleLogin,
+    msalLogin: handleMsalLogin,
+    supplierLogin: handleSupplierLogin,
+    supplierSignup: handleSupplierSignup,
     logout: handleLogout,
-    clearError: clearAuthError,
-    clearAuth: clearAuthentication,
+    clearError: handleClearError,
   };
 };
