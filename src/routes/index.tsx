@@ -57,7 +57,7 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/delegation"
           element={
-            <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST]}>
+            <PrivateRoute allowedRoles={[UserRole.PROCUREMENT_SPECIALIST, UserRole.ADMIN]}>
               <AppLayout>
                 <Delegation />
               </AppLayout>

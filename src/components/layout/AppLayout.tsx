@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Container, Toolbar } from '@mui/material';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import ChatWidget from '@/components/common/ChatWidget';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {children}
         </Container>
       </Box>
+      <ChatWidget />
     </Box>
   );
 };
