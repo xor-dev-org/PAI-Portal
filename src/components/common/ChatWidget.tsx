@@ -184,7 +184,7 @@ const ChatWidget: React.FC = () => {
           </Box>
         </Paper>
       ) : (
-        <Fab color="primary" onClick={toggleOpen} aria-label="Open chat" size="medium"><Chat /></Fab>
+        <Fab color="primary" onClick={toggleOpen} aria-label="Open chat" size="large"><Chat /></Fab>
       )}
     </Box>
   );

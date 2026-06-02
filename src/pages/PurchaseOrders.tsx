@@ -22,6 +22,7 @@ import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
+import { userService } from '@/api/services/userService';
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -43,8 +44,6 @@ const PurchaseOrders: React.FC = () => {
 
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-
-
 
   const fetchPurchaseOrders = useCallback(async () => {
     try {
@@ -72,6 +71,9 @@ const PurchaseOrders: React.FC = () => {
 
       const response = await purchaseOrderService.getPOList(filters);
       setPurchaseOrders(response.data);
+      console.log('PO: ', response.data);
+      // const pinned_columns = await userService.getPinnedColumns(user!.id);
+      // console.log('PC: ', pinned_columns);
       setRowCount(response.total);
     } catch (err: any) {
       console.error('Error fetching purchase orders:', err);
@@ -90,10 +92,10 @@ const PurchaseOrders: React.FC = () => {
   };
 
   // For DataGrid pagination
-  const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
-    setPage(model.page);
-    setPageSize(model.pageSize);
-  };
+  // const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
+  //   setPage(model.page);
+  //   setPageSize(model.pageSize);
+  // };
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -101,58 +103,79 @@ const PurchaseOrders: React.FC = () => {
   };
 
   // DataGrid columns
-  const columns: GridColDef[] = [
-    {
-      field: 'po_number',
-      headerName: 'PO Number',
-      width: 150,
-      renderCell: (params) => (
-        <Typography fontWeight="bold" height={'100%'} alignContent={'center'} color={theme.palette.primary.light}>{params.value}</Typography>
-      ),
-    },
-    {
-      field: 'supplier_name',
-      headerName: 'Supplier',
-      width: 200,
-    },
-    {
-      field: 'status',
-      headerName: 'Status',
-      width: 150,
-      renderCell: (params) => (
-        <Typography variant="body2" height={'100%'} alignContent={'center'}>
-          {params.value.replace(/_/g, ' ')}
-        </Typography>
-      ),
-    },
-    {
-      field: 'total_value',
-      headerName: 'Total Value',
-      width: 150,
-      renderCell: (params) => (
-        <Typography height={'100%'} alignContent={'center'}>
-          {params.row.currency} {params.value.toLocaleString()}
-        </Typography>
-      ),
-    },
-    {
-      field: 'delivery_date',
-      headerName: 'Delivery Date',
-      width: 150,
-      renderCell: (params) => format(new Date(params.value), 'MMM dd, yyyy'),
-    },
-    {
-      field: 'source_system',
-      headerName: 'Source',
-      width: 120,
-    },
-    {
-      field: 'line_items',
-      headerName: 'Items',
-      width: 100,
-      renderCell: (params) => params.value.length,
-    },
-  ];
+  const columns: GridColDef[] = React.useMemo(
+    () => [
+      {
+        field: 'po_number',
+        headerName: 'PO Number',
+        width: 150,
+        renderCell: (params) => (
+          <Typography
+            fontWeight="bold"
+            height={'100%'}
+            alignContent={'center'}
+            color={theme.palette.primary.light}
+          >
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'supplier_name',
+        headerName: 'Supplier Name',
+        width: 200,
+      },
+      {
+        field: 'supplier_id',
+        headerName: 'Supplier ID',
+        width: 200,
+      },
+      {
+        field: 'status',
+        headerName: 'Status',
+        width: 150,
+        renderCell: (params) => (
+          <Typography variant="body2" height={'100%'} alignContent={'center'}>
+            {params.value.replace(/_/g, ' ')}
+          </Typography>
+        ),
+      },
+      {
+        field: 'total_value',
+        headerName: 'Total Value',
+        width: 150,
+        renderCell: (params) => (
+          <Typography height={'100%'} alignContent={'center'}>
+            {params.row.currency} {params.value.toLocaleString()}
+          </Typography>
+        ),
+      },
+      {
+        field: 'delivery_date',
+        headerName: 'Delivery Date',
+        width: 150,
+        renderCell: (params) => format(new Date(params.value), 'MMM dd, yyyy'),
+      },
+      {
+        field: 'source_system',
+        headerName: 'Source',
+        width: 120,
+      },
+      {
+        field: 'line_items',
+        headerName: 'Items',
+        width: 100,
+        renderCell: (params) => params.value.length,
+      },
+      {
+        field: 'mrp_exceptions',
+        headerName: 'MRP Exceptions',
+        width: 200,
+        renderCell: (params) => params.value,
+      },
+    ],
+    []
+  );
 
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
@@ -163,7 +186,6 @@ const PurchaseOrders: React.FC = () => {
       <Typography variant="h5" gutterBottom fontWeight="bold">
         Purchase Order Listing
       </Typography>
-
       <POFilters
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
@@ -181,20 +203,19 @@ const PurchaseOrders: React.FC = () => {
         onViewModeChange={setViewMode}
         onFiltersClick={() => setShowAdvancedFilters(true)}
       />
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
+      {/* TODO: Optimise this block if selected */} 
       {purchaseOrders.length === 0 && !loading ? (
         <Alert severity="info">No purchase orders found</Alert>
       ) : (
         <>
           {viewMode === 'grid' ? (
             <>
-              <Box sx={{ height: '76vh', width: '100%', overflow: 'scroll' }}>
+              <Box sx={{ height: '75vh', width: '100%', overflowY: 'scroll' }}>
                 <Grid container spacing={3}>
                   {purchaseOrders.map((po) => (
                     <Grid item xs={12} sm={6} md={4} lg={2} key={po.id}>
@@ -212,35 +233,47 @@ const PurchaseOrders: React.FC = () => {
                   size="small"
                 />
               </Box>
-
             </>
           ) : (
-            <Box sx={{ height: '78vh', width: '100%' }}>
-              <DataGrid
-                rows={purchaseOrders}
-                columns={columns}
-                rowCount={rowCount}
-                pagination
-                paginationMode="server"
-                paginationModel={{ page, pageSize }}
-                onPaginationModelChange={handlePaginationModelChange}
-                disableRowSelectionOnClick
-                hideFooterSelectedRowCount
-                onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
-                sx={{
-                  '& .MuiDataGrid-row': {
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
+            <>
+              <Box sx={{ height: '75vh', width: '100%' }}>
+                <DataGrid
+                  rows={purchaseOrders}
+                  columns={columns}
+                  rowCount={rowCount}
+                  rowHeight={40}
+                  // pagination
+                  paginationMode="server"
+                  // paginationModel={{ page, pageSize }}
+                  // onPaginationModelChange={handlePaginationModelChange}
+                  // hideFooterPagination
+                  hideFooter
+                  disableRowSelectionOnClick
+                  hideFooterSelectedRowCount
+                  onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
+                  sx={{
+                    '& .MuiDataGrid-row': {
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
                     },
-                  },
-                }}
-              />
-            </Box>
+                  }}
+                />
+              </Box>
+              <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
+                <Pagination
+                  count={Math.ceil(rowCount / pageSize)}
+                  page={page + 1}
+                  onChange={(_, value) => setPage(value - 1)}
+                  color="primary"
+                  size="small"
+                />
+              </Box>
+            </>
           )}
         </>
       )}
-
       {/* Advanced Filters Dialog */}
       <Dialog
         open={showAdvancedFilters}

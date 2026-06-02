@@ -13,4 +13,16 @@ export const userService = {
     const response = await apiClient.get<User[]>('/admin/users');
     return response.data;
   },
+
+  // getPinnedColumns: async (userId: string): Promise<string[]> => {
+  //   const response = await apiClient.get<{ pinned_columns: string[] }>(`/user-pref/pinned-columns?user_id=${userId}`);
+  //   return response.data.pinned_columns;
+  // },
+
+  // updatePinnedColumns: async (userId: string, pinnedColumns: string[]): Promise<void> => {
+  //   await apiClient.put('/user-pref/pinned-columns', {
+  //     user_id: userId,
+  //     pinned_columns: pinnedColumns,
+  //   });
+  // },
 };

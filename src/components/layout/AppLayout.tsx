@@ -28,7 +28,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         }}
       >
         <Toolbar />
-        <Container maxWidth="xl" sx={{ mt: 1, mb: 4 }}>
+        <Container maxWidth="xl" sx={{ mt: 1, mb: 1 }}>
           {children}
         </Container>
       </Box>
