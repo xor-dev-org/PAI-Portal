@@ -38,7 +38,7 @@ const PurchaseOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('delivery_date_desc');
   const [page, setPage] = useState(0); // DataGrid uses 0-based page
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(60);
   const [rowCount, setRowCount] = useState(0);
 
   // Advanced filters
@@ -130,7 +130,7 @@ const PurchaseOrders: React.FC = () => {
       headerName: 'Total Value',
       width: 150,
       renderCell: (params) => (
-        <Typography  height={'100%'} alignContent={'center'}>
+        <Typography height={'100%'} alignContent={'center'}>
           {params.row.currency} {params.value.toLocaleString()}
         </Typography>
       ),
@@ -160,7 +160,7 @@ const PurchaseOrders: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom fontWeight="bold">
+      <Typography variant="h5" gutterBottom fontWeight="bold">
         Purchase Order Listing
       </Typography>
 
@@ -194,25 +194,28 @@ const PurchaseOrders: React.FC = () => {
         <>
           {viewMode === 'grid' ? (
             <>
-              <Grid container spacing={3}>
-                {purchaseOrders.map((po) => (
-                  <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
-                    <POCard po={po} onClick={handlePOClick} />
-                  </Grid>
-                ))}
-              </Grid>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <Box sx={{ height: '76vh', width: '100%', overflow: 'scroll' }}>
+                <Grid container spacing={3}>
+                  {purchaseOrders.map((po) => (
+                    <Grid item xs={12} sm={6} md={4} lg={2} key={po.id}>
+                      <POCard po={po} onClick={handlePOClick} />
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+              <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
                 <Pagination
                   count={Math.ceil(rowCount / pageSize)}
                   page={page + 1}
                   onChange={(_, value) => setPage(value - 1)}
                   color="primary"
-                  size="large"
+                  size="small"
                 />
               </Box>
+
             </>
           ) : (
-            <Box sx={{ height: 600, width: '100%' }}>
+            <Box sx={{ height: '78vh', width: '100%' }}>
               <DataGrid
                 rows={purchaseOrders}
                 columns={columns}

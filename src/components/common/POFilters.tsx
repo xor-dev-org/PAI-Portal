@@ -55,7 +55,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   ];
 
   return (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: 1, mb: 2 }}>
       <Stack 
         direction={{ xs: 'column', md: 'row' }} 
         spacing={2} 
