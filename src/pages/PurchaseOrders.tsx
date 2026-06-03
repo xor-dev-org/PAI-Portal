@@ -21,10 +21,15 @@ import {
   InputAdornment,
   IconButton,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
-import { PurchaseOrder, POFilters as POFiltersType, AdvanceFilters } from '@/models';
+import {
+  PurchaseOrder,
+  POFilters as POFiltersType,
+  AdvanceFilters,
+  PurchaseOrderStatus,
+} from '@/models';
 import { useAuth } from '@/hooks/useAuth';
 import POCard from '@/components/common/POCard';
 import POFilters from '@/components/common/POFilters';
@@ -32,6 +37,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
 import ClearIcon from '@mui/icons-material/Clear';
+import './grid.css';
 import { userService } from '@/api/services/userService';
 
 const PurchaseOrders: React.FC = () => {
@@ -201,6 +207,19 @@ const PurchaseOrders: React.FC = () => {
     setShowAdvancedFilters(false);
   };
 
+  const statusColors: Record<
+    PurchaseOrderStatus,
+    'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
+  > = {
+    CREATED: 'default',
+    APPROVED: 'info',
+    SENT_TO_SUPPLIER: 'primary',
+    IN_TRANSIT: 'warning',
+    DELIVERED: 'success',
+    CANCELLED: 'error',
+    IN_PROGRESS: 'warning',
+  };
+
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
@@ -213,11 +232,17 @@ const PurchaseOrders: React.FC = () => {
             fontWeight="bold"
             height={'100%'}
             alignContent={'center'}
+            fontSize={'0.8rem'}
             color={theme.palette.primary.light}
           >
             {params.value}
           </Typography>
         ),
+        sx: {
+          '&:hover': {
+            color: theme.palette.primary.main,
+          },
+        },
       },
       {
         field: 'supplier_name',
@@ -234,9 +259,11 @@ const PurchaseOrders: React.FC = () => {
         headerName: 'Status',
         width: 150,
         renderCell: (params) => (
-          <Typography variant="body2" height={'100%'} alignContent={'center'}>
-            {params.value.replace(/_/g, ' ')}
-          </Typography>
+          <Chip
+            label={params.value.replace(/_/g, ' ')}
+            color={statusColors[params.value as PurchaseOrderStatus]}
+            size="small"
+          />
         ),
       },
       {
@@ -244,7 +271,7 @@ const PurchaseOrders: React.FC = () => {
         headerName: 'Total Value',
         width: 150,
         renderCell: (params) => (
-          <Typography height={'100%'} alignContent={'center'}>
+          <Typography height={'100%'} alignContent={'center'} fontSize={'0.8rem'}>
             {params.row.currency} {params.value.toLocaleString()}
           </Typography>
         ),
@@ -321,10 +348,15 @@ const PurchaseOrders: React.FC = () => {
               />
             ))}
 
-            <Chip size='small' label="Clear All" color="error" onClick={() => {
-              setAdvancefilters({});
-              setAdvanceTempfilters({});
-            }} />
+            <Chip
+              size="small"
+              label="Clear All"
+              color="error"
+              onClick={() => {
+                setAdvancefilters({});
+                setAdvanceTempfilters({});
+              }}
+            />
           </Stack>
         </Box>
       )}
@@ -340,7 +372,13 @@ const PurchaseOrders: React.FC = () => {
         <>
           {viewMode === 'grid' ? (
             <>
-              <Box sx={{ height: appliedFilters.length > 0 ? '68vh' : '72vh', width: '100%', overflowY: 'scroll' }}>
+              <Box
+                sx={{
+                  height: appliedFilters.length > 0 ? '68vh' : '72vh',
+                  width: '100%',
+                  overflowY: 'scroll',
+                }}
+              >
                 <Grid container spacing={3}>
                   {purchaseOrders.map((po) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
@@ -366,13 +404,30 @@ const PurchaseOrders: React.FC = () => {
                   rows={purchaseOrders}
                   columns={columns}
                   rowCount={rowCount}
-                  rowHeight={40}
+                  rowHeight={35}
+                  getRowClassName={(params) => {
+                    // console.log('params: ', params);
+                    return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
+                  }}
                   // pagination
                   paginationMode="server"
+                  filterMode="server"
                   // paginationModel={{ page, pageSize }}
                   // onPaginationModelChange={handlePaginationModelChange}
                   // hideFooterPagination
                   hideFooter
+                  onFilterModelChange={(e) => {
+                    console.log('filter model: ', e);
+                    // const key = e.
+                    // setAdvanceTempfilters((prev) => {
+                    //   const updated = {
+                    //     ...prev,
+                    //     [key]: value,
+                    //   };
+
+                    //   return updated;
+                    // });
+                  }}
                   disableRowSelectionOnClick
                   hideFooterSelectedRowCount
                   onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
@@ -382,8 +437,23 @@ const PurchaseOrders: React.FC = () => {
                       '&:hover': {
                         bgcolor: 'action.hover',
                       },
+                      fontSize: '0.8rem',
+                    },
+
+                    '& .MuiDataGrid-toolbarContainer': {
+                      justifyContent: 'flex-end',
+                      width: '100%',
                     },
                   }}
+                  // filterModel={{
+                  //   items: [
+                  //     { field: 'po_number', operator: 'contains', value: '' },
+                  //     { field: 'supplier_name', operator: 'contains', value: '' },
+                  //   ],
+                  // }}
+                  // slots={{
+                  //   toolbar: () => <GridToolbar sx={{ fontSize: '0.8rem', height: '4.5rem' }} />,
+                  // }}
                 />
               </Box>
               <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
@@ -407,7 +477,12 @@ const PurchaseOrders: React.FC = () => {
         fullWidth
         PaperProps={{
           sx: {
-            minHeight: 650,
+            // position: 'absolute',
+            // top: '25%',
+            // left: '68%',
+            // transform: 'translate(-50%, -20%)',
+            // borderRadius: 2,
+            // boxShadow: 24,
           },
         }}
       >
