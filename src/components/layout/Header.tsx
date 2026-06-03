@@ -12,13 +12,13 @@ import {
   Chip,
 } from '@mui/material';
 import {
-  Brightness4,
-  Brightness7,
+  // Brightness4,
+  // Brightness7,
   Logout,
   Settings,
   Menu as MenuIcon,
 } from '@mui/icons-material';
-import { useThemeMode } from '@/theme/ThemeProvider';
+// import { useThemeMode } from '@/theme/ThemeProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,7 +27,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
-  const { mode, toggleTheme } = useThemeMode();
+  // const { mode, toggleTheme } = useThemeMode();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -112,11 +112,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             />
           )}
 
-          <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
+          {/* <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
             <IconButton onClick={toggleTheme} color="inherit">
               {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
             </IconButton>
-          </Tooltip>
+          </Tooltip> */}
 
           {user && (
             <>
