@@ -79,7 +79,6 @@ export interface POListResponse {
   total: number;
   data: PurchaseOrder[];
 }
-
 export interface POFilters {
   page?: number;
   page_size?: number;
@@ -88,8 +87,41 @@ export interface POFilters {
   procurement_specialist_id?: string;
   search?: string;
   sort_by?: 'delivery_date_asc' | 'delivery_date_desc';
+
+  po_number?: string;
+  supplier_name?: string;
+
+  total_value_from?: number;
+  total_value_to?: number;
+
+  delivery_date_from?: string;
+  delivery_date_to?: string;
+
+  source_system?: string;
+
+  items_from?: number;
+  items_to?: number;
+
+  mrp_exceptions?: string;
 }
 
+export interface AdvanceFilters {
+  po_number?: string;
+  supplier_name?: string;
+
+  total_value_from?: number;
+  total_value_to?: number;
+
+  delivery_date_from?: string;
+  delivery_date_to?: string;
+
+  source_system?: string;
+
+  items_from?: number;
+  items_to?: number;
+
+  mrp_exceptions?: string;
+}
 export interface Supplier {
   id: string;
   supplier_number: string;

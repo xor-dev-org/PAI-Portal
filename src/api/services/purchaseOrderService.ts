@@ -5,14 +5,26 @@ export const purchaseOrderService = {
   // Get PO list with filters and pagination
   getPOList: async (filters: POFilters = {}): Promise<POListResponse> => {
     const params = new URLSearchParams();
-    
+
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.page_size) params.append('page_size', filters.page_size.toString());
     if (filters.status) params.append('status', filters.status);
     if (filters.supplier_id) params.append('supplier_id', filters.supplier_id);
-    if (filters.procurement_specialist_id) params.append('procurement_specialist_id', filters.procurement_specialist_id);
+    if (filters.procurement_specialist_id)
+      params.append('procurement_specialist_id', filters.procurement_specialist_id);
     if (filters.search) params.append('search', filters.search);
     if (filters.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters.po_number) params.append('po_number', filters.po_number);
+    if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
+    if (filters.total_value_from)
+      params.append('total_value_from', filters.total_value_from.toString());
+    if (filters.total_value_to) params.append('total_value_to', filters.total_value_to.toString());
+    if (filters.source_system) params.append('source_system', filters.source_system);
+    if (filters.items_from) params.append('items_from', filters.items_from.toString());
+    if (filters.items_to) params.append('items_to', filters.items_to.toString());
+    if (filters.mrp_exceptions) params.append('mrp_exceptions', filters.mrp_exceptions);
+    if (filters.delivery_date_from) params.append('delivery_date_from', filters.delivery_date_from);
+    if (filters.delivery_date_to) params.append('delivery_date_to', filters.delivery_date_to);
 
     const response = await apiClient.get<POListResponse>(`/po?${params.toString()}`);
     return response.data;

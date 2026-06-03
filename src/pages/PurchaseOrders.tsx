@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -11,17 +11,27 @@ import {
   Button,
   Pagination,
   useTheme,
+  TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Stack,
+  Chip,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
-import { PurchaseOrder, POFilters as POFiltersType } from '@/models';
+import { PurchaseOrder, POFilters as POFiltersType, AdvanceFilters } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
 import POCard from '@/components/common/POCard';
 import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
+import ClearIcon from '@mui/icons-material/Clear';
 import { userService } from '@/api/services/userService';
 
 const PurchaseOrders: React.FC = () => {
@@ -44,6 +54,9 @@ const PurchaseOrders: React.FC = () => {
 
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advanceFilters, setAdvancefilters] = useState<AdvanceFilters>({});
+  const [advanceTempFilters, setAdvanceTempfilters] = useState<AdvanceFilters>({});
+  // const advanceFiltersRef = useRef<AdvanceFilters>({});
 
   const fetchPurchaseOrders = useCallback(async () => {
     try {
@@ -56,7 +69,10 @@ const PurchaseOrders: React.FC = () => {
         status: statusFilter,
         sort_by: sortOrder as any,
         search: searchQuery,
+        ...advanceFilters,
       };
+
+      console.log('adv: ', advanceFilters);
 
       logger.info(
         'Fetching purchase orders with filters',
@@ -81,7 +97,7 @@ const PurchaseOrders: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, statusFilter, sortOrder, searchQuery, user]);
+  }, [page, pageSize, statusFilter, sortOrder, searchQuery, user, advanceFilters]);
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -90,6 +106,61 @@ const PurchaseOrders: React.FC = () => {
   const handlePOClick = (po: PurchaseOrder) => {
     navigate(`/purchase-orders/${po.id}`);
   };
+
+  const appliedFilters = [
+    advanceFilters.po_number && {
+      key: 'po_number',
+      label: `PO: ${advanceFilters.po_number}`,
+    },
+
+    advanceFilters.supplier_name && {
+      key: 'supplier_name',
+      label: `Supplier: ${advanceFilters.supplier_name}`,
+    },
+
+    advanceFilters.source_system && {
+      key: 'source_system',
+      label: `Source: ${advanceFilters.source_system}`,
+    },
+
+    advanceFilters.total_value_from !== undefined && {
+      key: 'total_value_from',
+      label: `Value ≥ ${advanceFilters.total_value_from}`,
+    },
+
+    advanceFilters.total_value_to !== undefined && {
+      key: 'total_value_to',
+      label: `Value ≤ ${advanceFilters.total_value_to}`,
+    },
+
+    advanceFilters.delivery_date_from && {
+      key: 'delivery_date_from',
+      label: `Delivery From ${advanceFilters.delivery_date_from}`,
+    },
+
+    advanceFilters.delivery_date_to && {
+      key: 'delivery_date_to',
+      label: `Delivery To ${advanceFilters.delivery_date_to}`,
+    },
+
+    advanceFilters.items_from !== undefined && {
+      key: 'items_from',
+      label: `Items ≥ ${advanceFilters.items_from}`,
+    },
+
+    advanceFilters.items_to !== undefined && {
+      key: 'items_to',
+      label: `Items ≤ ${advanceFilters.items_to}`,
+    },
+
+    advanceFilters.mrp_exceptions && {
+      key: 'mrp_exceptions',
+      label: `MRP: ${advanceFilters.mrp_exceptions}`,
+    },
+  ].filter(Boolean) as {
+    key: keyof AdvanceFilters;
+    label: string;
+  }[];
 
   // For DataGrid pagination
   // const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
@@ -100,6 +171,34 @@ const PurchaseOrders: React.FC = () => {
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     setPage(0);
+  };
+
+  const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
+    key: K,
+    value: AdvanceFilters[K]
+  ) => {
+    setAdvanceTempfilters((prev) => {
+      const updated = {
+        ...prev,
+        [key]: value,
+      };
+
+      return updated;
+    });
+  };
+
+  const handleClearAdvanceFilters = () => {
+    setAdvanceTempfilters({});
+    setAdvancefilters({});
+    // advanceFiltersRef.current = {};
+  };
+
+  const handleApplyAdvanceFilters = () => {
+    // TODO: Apply filters to the purchase orders list
+    console.log('Applying filters:', advanceTempFilters);
+    setPage(0);
+    setAdvancefilters({ ...advanceTempFilters });
+    setShowAdvancedFilters(false);
   };
 
   // DataGrid columns
@@ -203,12 +302,38 @@ const PurchaseOrders: React.FC = () => {
         onViewModeChange={setViewMode}
         onFiltersClick={() => setShowAdvancedFilters(true)}
       />
+      {appliedFilters.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {appliedFilters.map((filter) => (
+              <Chip
+                key={filter.key}
+                label={filter.label}
+                size="small"
+                color="primary"
+                variant="outlined"
+                onDelete={() => {
+                  const updated = { ...advanceFilters };
+                  delete updated[filter.key];
+                  setAdvancefilters(updated);
+                  setAdvanceTempfilters(updated);
+                }}
+              />
+            ))}
+
+            <Chip size='small' label="Clear All" color="error" onClick={() => {
+              setAdvancefilters({});
+              setAdvanceTempfilters({});
+            }} />
+          </Stack>
+        </Box>
+      )}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      {/* TODO: Optimise this block if selected */} 
+      {/* TODO: Optimise this block if selected */}
       {purchaseOrders.length === 0 && !loading ? (
         <Alert severity="info">No purchase orders found</Alert>
       ) : (
@@ -278,19 +403,203 @@ const PurchaseOrders: React.FC = () => {
       <Dialog
         open={showAdvancedFilters}
         onClose={() => setShowAdvancedFilters(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            minHeight: 650,
+          },
+        }}
       >
         <DialogTitle>Advanced Filters</DialogTitle>
+
         <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Additional filters will be available here
-            </Typography>
-          </Box>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {/* PO Number */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="PO Number"
+                fullWidth
+                size="small"
+                value={advanceTempFilters.po_number || ''}
+                onChange={(e) => handleAdvanceFilterChange('po_number', e.target.value)}
+                InputProps={{
+                  endAdornment: advanceTempFilters.po_number ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleAdvanceFilterChange('po_number', undefined)}
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+                }}
+              />
+            </Grid>
+
+            {/* Supplier */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Supplier Name"
+                fullWidth
+                size="small"
+                value={advanceTempFilters.supplier_name || ''}
+                onChange={(e) => handleAdvanceFilterChange('supplier_name', e.target.value)}
+              />
+            </Grid>
+
+            {/* Source */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Source System</InputLabel>
+
+                <Select
+                  label="Source System"
+                  value={advanceTempFilters.source_system || ''}
+                  onChange={(e) =>
+                    handleAdvanceFilterChange('source_system', e.target.value || undefined)
+                  }
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="SAP">SAP</MenuItem>
+                  <MenuItem value="Oracle">Oracle</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* MRP */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>MRP Exceptions</InputLabel>
+
+                <Select
+                  label="MRP Exceptions"
+                  value={advanceTempFilters.mrp_exceptions || ''}
+                  onChange={(e) =>
+                    handleAdvanceFilterChange('mrp_exceptions', e.target.value || undefined)
+                  }
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="Yes">Yes</MenuItem>
+                  <MenuItem value="No">No</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Value Range */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Total Value From"
+                type="number"
+                fullWidth
+                size="small"
+                value={advanceTempFilters.total_value_from || ''}
+                onChange={(e) =>
+                  handleAdvanceFilterChange(
+                    'total_value_from',
+                    e.target.value ? Number(e.target.value) : undefined
+                  )
+                }
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Total Value To"
+                type="number"
+                fullWidth
+                size="small"
+                value={advanceTempFilters.total_value_to || ''}
+                onChange={(e) =>
+                  handleAdvanceFilterChange(
+                    'total_value_to',
+                    e.target.value ? Number(e.target.value) : undefined
+                  )
+                }
+              />
+            </Grid>
+
+            {/* Delivery Date Range */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Delivery From"
+                type="date"
+                fullWidth
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                value={advanceTempFilters.delivery_date_from || ''}
+                onChange={(e) => handleAdvanceFilterChange('delivery_date_from', e.target.value)}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Delivery To"
+                type="date"
+                fullWidth
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                value={advanceTempFilters.delivery_date_to || ''}
+                onChange={(e) => handleAdvanceFilterChange('delivery_date_to', e.target.value)}
+              />
+            </Grid>
+
+            {/* Items Range */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Items From"
+                type="number"
+                fullWidth
+                size="small"
+                value={advanceTempFilters.items_from || ''}
+                onChange={(e) =>
+                  handleAdvanceFilterChange(
+                    'items_from',
+                    e.target.value ? Number(e.target.value) : undefined
+                  )
+                }
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Items To"
+                type="number"
+                fullWidth
+                size="small"
+                value={advanceTempFilters.items_to || ''}
+                onChange={(e) =>
+                  handleAdvanceFilterChange(
+                    'items_to',
+                    e.target.value ? Number(e.target.value) : undefined
+                  )
+                }
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowAdvancedFilters(false)}>Close</Button>
+
+        <DialogActions
+          sx={{
+            justifyContent: 'space-between',
+            px: 3,
+            py: 2,
+          }}
+        >
+          <Button color="error" variant="outlined" onClick={handleClearAdvanceFilters}>
+            Clear All
+          </Button>
+
+          <Box>
+            <Button sx={{ mr: 1 }} onClick={() => setShowAdvancedFilters(false)}>
+              Cancel
+            </Button>
+
+            <Button variant="contained" onClick={handleApplyAdvanceFilters}>
+              Apply Filters
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </Box>
