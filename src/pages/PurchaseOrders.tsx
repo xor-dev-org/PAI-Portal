@@ -303,7 +303,7 @@ const PurchaseOrders: React.FC = () => {
         onFiltersClick={() => setShowAdvancedFilters(true)}
       />
       {appliedFilters.length > 0 && (
-        <Box sx={{ mb: 2 }}>
+        <Box height={'2vh'} sx={{ mb: 2 }}>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {appliedFilters.map((filter) => (
               <Chip
@@ -340,7 +340,7 @@ const PurchaseOrders: React.FC = () => {
         <>
           {viewMode === 'grid' ? (
             <>
-              <Box sx={{ height: '72vh', width: '100%', overflowY: 'scroll' }}>
+              <Box sx={{ height: appliedFilters.length > 0 ? '68vh' : '72vh', width: '100%', overflowY: 'scroll' }}>
                 <Grid container spacing={3}>
                   {purchaseOrders.map((po) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
@@ -361,7 +361,7 @@ const PurchaseOrders: React.FC = () => {
             </>
           ) : (
             <>
-              <Box sx={{ height: '72vh', width: '100%' }}>
+              <Box sx={{ height: appliedFilters.length > 0 ? '68vh' : '72vh', width: '100%' }}>
                 <DataGrid
                   rows={purchaseOrders}
                   columns={columns}
