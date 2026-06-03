@@ -123,12 +123,12 @@ const PurchaseOrders: React.FC = () => {
       {
         field: 'supplier_name',
         headerName: 'Supplier Name',
-        width: 200,
+        width: 150,
       },
       {
         field: 'supplier_id',
         headerName: 'Supplier ID',
-        width: 200,
+        width: 100,
       },
       {
         field: 'status',
@@ -164,13 +164,13 @@ const PurchaseOrders: React.FC = () => {
       {
         field: 'line_items',
         headerName: 'Items',
-        width: 100,
+        width: 70,
         renderCell: (params) => params.value.length,
       },
       {
         field: 'mrp_exceptions',
         headerName: 'MRP Exceptions',
-        width: 200,
+        width: 150,
         renderCell: (params) => params.value,
       },
     ],
@@ -215,10 +215,10 @@ const PurchaseOrders: React.FC = () => {
         <>
           {viewMode === 'grid' ? (
             <>
-              <Box sx={{ height: '75vh', width: '100%', overflowY: 'scroll' }}>
+              <Box sx={{ height: '72vh', width: '100%', overflowY: 'scroll' }}>
                 <Grid container spacing={3}>
                   {purchaseOrders.map((po) => (
-                    <Grid item xs={12} sm={6} md={4} lg={2} key={po.id}>
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
                       <POCard po={po} onClick={handlePOClick} />
                     </Grid>
                   ))}
@@ -236,7 +236,7 @@ const PurchaseOrders: React.FC = () => {
             </>
           ) : (
             <>
-              <Box sx={{ height: '75vh', width: '100%' }}>
+              <Box sx={{ height: '72vh', width: '100%' }}>
                 <DataGrid
                   rows={purchaseOrders}
                   columns={columns}

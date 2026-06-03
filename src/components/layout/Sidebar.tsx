@@ -142,7 +142,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
         transition: 'width 0.2s',
       }}
       aria-label="navigation menu"
-      bgcolor="primary.main"
+      bgcolor={theme.palette.secondary.main}
     >
       {/* Mobile drawer */}
       <Drawer
