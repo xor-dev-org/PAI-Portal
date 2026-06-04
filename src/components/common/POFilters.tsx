@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -7,6 +7,9 @@ import {
   Tooltip,
   Stack,
   Paper,
+  Button,
+  Typography,
+  ButtonBase,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -14,6 +17,14 @@ import SortIcon from '@mui/icons-material/Sort';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import { PurchaseOrderStatus } from '@/models';
+import {
+  GridToolbarColumnsButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
+  GridToolbarFilterButton,
+  GridToolbarQuickFilter,
+} from '@mui/x-data-grid';
+import { PushPin, PushPinOutlined } from '@mui/icons-material';
 
 interface POFiltersProps {
   searchQuery: string;
@@ -27,7 +38,6 @@ interface POFiltersProps {
   onFiltersClick: () => void;
   pinFilter: string;
   onPinFilterChange: (value: string) => void;
-  
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
@@ -65,8 +75,16 @@ const POFilters: React.FC<POFiltersProps> = ({
   ];
 
   return (
-    <Paper sx={{ p: 1, mb: 2, borderRadius: 0 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right', gap: 2, flexWrap: 'wrap' }}
+    <Paper sx={{ p: 1, mb: 1, borderRadius: 0, boxShadow: 0 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'right',
+          alignItems: 'right',
+          gap: 2,
+          flexWrap: 'wrap',
+          shadow: 0,
+        }}
       >
         {/* <TextField
           
@@ -80,7 +98,7 @@ const POFilters: React.FC<POFiltersProps> = ({
           sx={{ flex: 1 }}
         /> */}
 
-        <TextField
+        {/* <TextField
           select
           size="small"
         //   label="Status"
@@ -96,9 +114,23 @@ const POFilters: React.FC<POFiltersProps> = ({
               {option.label}
             </MenuItem>
           ))}
-        </TextField>
+        </TextField> */}
 
-        <TextField
+        <GridToolbarQuickFilter />
+        <GridToolbarDensitySelector />
+        <GridToolbarColumnsButton />
+        {/* <GridToolbarFilterButton
+          slotProps={{
+            button: (
+              <IconButton onClick={onFiltersClick} color="primary">
+                <FilterListIcon />
+              </IconButton>
+            ),
+          }}
+        /> */}
+        <GridToolbarExport />
+
+        {/* <TextField
           select
           size="small"
           value={sortOrder}
@@ -130,13 +162,30 @@ const POFilters: React.FC<POFiltersProps> = ({
               {option.label}
             </MenuItem>
           ))}
-        </TextField>
+        </TextField> */}
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, fontSize: '0.8125rem' }}>
           <Tooltip title="Advanced Filters">
-            <IconButton onClick={onFiltersClick} color="primary">
+            <Button onClick={onFiltersClick} color="primary">
               <FilterListIcon />
-            </IconButton>
+              <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
+                Filters
+              </Typography>
+            </Button>
+          </Tooltip>
+          <Tooltip title="Pinned Rows">
+            <Button
+              onClick={(e) => {
+                onPinFilterChange(pinFilter === 'pinned' ? 'all' : 'pinned');
+              }}
+              color="primary"
+              sx={{fontSize: '0.8125rem'}}
+            >
+              {pinFilter === 'pinned' ? <PushPin /> : <PushPinOutlined />}
+              {/* <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
+                {pinFilter === 'pinned' ? 'Pinned Only' : 'All POs'}
+              </Typography> */}
+            </Button>
           </Tooltip>
 
           <Tooltip title={viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}>

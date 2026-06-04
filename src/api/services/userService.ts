@@ -14,15 +14,17 @@ export const userService = {
     return response.data;
   },
 
-  // getPinnedColumns: async (userId: string): Promise<string[]> => {
-  //   const response = await apiClient.get<{ pinned_columns: string[] }>(`/user-pref/pinned-columns?user_id=${userId}`);
-  //   return response.data.pinned_columns;
-  // },
+  getPinnedRows: async (userId: string): Promise<string[]> => {
+    const response = await apiClient.get<{ pinned_rows: string[] }>(`/user-pref/pinned-rows?user_id=${userId}`);
+    return response.data.pinned_rows;
+  },
 
-  // updatePinnedColumns: async (userId: string, pinnedColumns: string[]): Promise<void> => {
-  //   await apiClient.put('/user-pref/pinned-columns', {
-  //     user_id: userId,
-  //     pinned_columns: pinnedColumns,
-  //   });
-  // },
+  updatePinnedRows: async (userId: string, pinnedRows: string[]): Promise<{ pinned_rows: string[] }> => {
+    const response = await apiClient.put<{ pinned_rows: string[] }>('/user-pref/pinned-rows', {
+      user_id: userId,
+      pinned_rows: pinnedRows,
+    });
+    console.log(`Updated pinned rows for user ${JSON.stringify(response.data)}`);
+    return response.data;
+  },
 };
