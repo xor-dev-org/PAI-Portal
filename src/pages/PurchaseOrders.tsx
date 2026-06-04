@@ -20,9 +20,12 @@ import {
   Chip,
   InputAdornment,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import {
   PurchaseOrder,
@@ -36,9 +39,12 @@ import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
+// import StarIcon from '@mui/icons-material/Star';
+// import StarBorderIcon from '@mui/icons-material/StarBorder';
+ 
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
-import { userService } from '@/api/services/userService';
+//import { userService } from '@/api/services/userService';
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -55,7 +61,7 @@ const PurchaseOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('delivery_date_desc');
   const [page, setPage] = useState(0); // DataGrid uses 0-based page
-  const [pageSize, setPageSize] = useState(60);
+  const pageSize = 60;
   const [rowCount, setRowCount] = useState(0);
 
   // Advanced filters
@@ -63,6 +69,24 @@ const PurchaseOrders: React.FC = () => {
   const [advanceFilters, setAdvancefilters] = useState<AdvanceFilters>({});
   const [advanceTempFilters, setAdvanceTempfilters] = useState<AdvanceFilters>({});
   // const advanceFiltersRef = useRef<AdvanceFilters>({});
+
+  // Pin functionality
+  const [pinnedPOIds, setPinnedPOIds] = useState<string[]>(() => {
+    const stored = localStorage.getItem('pinnedPOs');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [pinFilter, setPinFilter] = useState('all'); // 'all', 'pinned'
+
+  // Update localStorage when pinnedPOIds changes
+  useEffect(() => {
+    localStorage.setItem('pinnedPOs', JSON.stringify(pinnedPOIds));
+  }, [pinnedPOIds]);
+
+  const togglePin = useCallback((poId: string) => {
+    setPinnedPOIds((prev) =>
+      prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId]
+    );
+  }, []);
 
   const fetchPurchaseOrders = useCallback(async () => {
     try {
@@ -73,7 +97,7 @@ const PurchaseOrders: React.FC = () => {
         page: page + 1,
         page_size: pageSize,
         status: statusFilter,
-        sort_by: sortOrder as any,
+        sort_by: (sortOrder as 'delivery_date_asc' | 'delivery_date_desc'),
         search: searchQuery,
         ...advanceFilters,
       };
@@ -97,9 +121,10 @@ const PurchaseOrders: React.FC = () => {
       // const pinned_columns = await userService.getPinnedColumns(user!.id);
       // console.log('PC: ', pinned_columns);
       setRowCount(response.total);
-    } catch (err: any) {
-      console.error('Error fetching purchase orders:', err);
-      setError(err.response?.data?.detail || 'Failed to load purchase orders');
+    } catch (err) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      console.error('Error fetching purchase orders:', error);
+      setError(error.response?.data?.detail || 'Failed to load purchase orders');
     } finally {
       setLoading(false);
     }
@@ -179,6 +204,26 @@ const PurchaseOrders: React.FC = () => {
     setPage(0);
   };
 
+  // Filter and sort purchase orders
+  const filteredAndSortedPOs = React.useMemo(() => {
+    let filtered = [...purchaseOrders];
+
+    // Apply pin filter
+    if (pinFilter === 'pinned') {
+      filtered = filtered.filter((po) => pinnedPOIds.includes(po.id));
+    } else if (pinFilter === 'unpinned') {
+      filtered = filtered.filter((po) => !pinnedPOIds.includes(po.id));
+    }
+
+    // Sort: pinned items first
+    return filtered.sort((a, b) => {
+      const aPinned = pinnedPOIds.includes(a.id);
+      const bPinned = pinnedPOIds.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+  }, [purchaseOrders, pinnedPOIds, pinFilter]);
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
     key: K,
     value: AdvanceFilters[K]
@@ -223,6 +268,38 @@ const PurchaseOrders: React.FC = () => {
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
+      {
+        field: 'pin',
+        headerName: 'Pin',
+        width: 60,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <Tooltip title={pinnedPOIds.includes(params.row.id) ? 'Unpin' : 'Pin'}>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePin(params.row.id);
+              }}
+              sx={{
+                color: pinnedPOIds.includes(params.row.id)
+                  ? 'primary.main'
+                  : 'action.disabled',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              {pinnedPOIds.includes(params.row.id) ? (
+                <PushPinIcon sx={{ fontSize: '1.25rem' }} />
+              ) : (
+                <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        ),
+      },
       {
         field: 'po_number',
         headerName: 'PO Number',
@@ -300,7 +377,7 @@ const PurchaseOrders: React.FC = () => {
         renderCell: (params) => params.value,
       },
     ],
-    []
+    [theme, pinnedPOIds, togglePin]
   );
 
   if (loading && purchaseOrders.length === 0) {
@@ -331,8 +408,13 @@ const PurchaseOrders: React.FC = () => {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onFiltersClick={() => setShowAdvancedFilters(true)}
-      /> */}
-      {/* {appliedFilters.length > 0 && (
+        pinFilter={pinFilter}
+        onPinFilterChange={(value) => {
+          setPinFilter(value);
+          setPage(0);
+        }}
+      />
+      {appliedFilters.length > 0 && (
         <Box height={'2vh'} sx={{ mb: 2 }}>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {appliedFilters.map((filter) => (
@@ -383,9 +465,39 @@ const PurchaseOrders: React.FC = () => {
                 }}
               >
                 <Grid container spacing={3}>
-                  {purchaseOrders.map((po) => (
+                  {filteredAndSortedPOs.map((po) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
-                      <POCard po={po} onClick={handlePOClick} />
+                      <Box sx={{ position: 'relative' }}>
+                        <POCard po={po} onClick={handlePOClick} />
+                        <Tooltip title={pinnedPOIds.includes(po.id) ? 'Unpin' : 'Pin'}>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePin(po.id);
+                            }}
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              color: pinnedPOIds.includes(po.id)
+                                ? 'primary.main'
+                                : 'action.disabled',
+                              backgroundColor: 'background.paper',
+                              '&:hover': {
+                                backgroundColor: 'action.hover',
+                              },
+                              boxShadow: 1,
+                            }}
+                          >
+                            {pinnedPOIds.includes(po.id) ? (
+                              <PushPinIcon sx={{ fontSize: '1.25rem' }} />
+                            ) : (
+                              <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </Grid>
                   ))}
                 </Grid>
@@ -404,7 +516,7 @@ const PurchaseOrders: React.FC = () => {
             <>
               <Box sx={{ height: appliedFilters.length > 0 ? '68vh' : '72vh', width: '100%' }}>
                 <DataGrid
-                  rows={purchaseOrders}
+                  rows={filteredAndSortedPOs}
                   columns={columns}
                   rowCount={rowCount}
                   rowHeight={35}
@@ -476,6 +588,11 @@ const PurchaseOrders: React.FC = () => {
                           viewMode={viewMode}
                           onViewModeChange={setViewMode}
                           onFiltersClick={() => setShowAdvancedFilters(true)}
+                          pinFilter={pinFilter}
+                          onPinFilterChange={(value) => {
+                            setPinFilter(value);
+                            setPage(0);
+                          }}
                         />
                         {appliedFilters.length > 0 && (
                           <Box height={'2vh'} sx={{ mb: 2 }}>
