@@ -312,7 +312,10 @@ const PurchaseOrders: React.FC = () => {
       <Typography variant="h5" gutterBottom fontWeight="bold">
         Purchase Order Listing
       </Typography>
-      <POFilters
+      <Typography variant="body2" gutterBottom fontWeight="bold">
+        Updated on {new Date().toLocaleString()}
+      </Typography>
+      {/* <POFilters
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         statusFilter={statusFilter}
@@ -328,8 +331,8 @@ const PurchaseOrders: React.FC = () => {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onFiltersClick={() => setShowAdvancedFilters(true)}
-      />
-      {appliedFilters.length > 0 && (
+      /> */}
+      {/* {appliedFilters.length > 0 && (
         <Box height={'2vh'} sx={{ mb: 2 }}>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {appliedFilters.map((filter) => (
@@ -359,7 +362,7 @@ const PurchaseOrders: React.FC = () => {
             />
           </Stack>
         </Box>
-      )}
+      )} */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -454,6 +457,60 @@ const PurchaseOrders: React.FC = () => {
                   // slots={{
                   //   toolbar: () => <GridToolbar sx={{ fontSize: '0.8rem', height: '4.5rem' }} />,
                   // }}
+                  slots={{
+                    toolbar: () => (
+                      <>
+                        <POFilters
+                          searchQuery={searchQuery}
+                          onSearchChange={handleSearchChange}
+                          statusFilter={statusFilter}
+                          onStatusChange={(value) => {
+                            setStatusFilter(value);
+                            setPage(0);
+                          }}
+                          sortOrder={sortOrder}
+                          onSortChange={(value) => {
+                            setSortOrder(value);
+                            setPage(0);
+                          }}
+                          viewMode={viewMode}
+                          onViewModeChange={setViewMode}
+                          onFiltersClick={() => setShowAdvancedFilters(true)}
+                        />
+                        {appliedFilters.length > 0 && (
+                          <Box height={'2vh'} sx={{ mb: 2 }}>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              {appliedFilters.map((filter) => (
+                                <Chip
+                                  key={filter.key}
+                                  label={filter.label}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                  onDelete={() => {
+                                    const updated = { ...advanceFilters };
+                                    delete updated[filter.key];
+                                    setAdvancefilters(updated);
+                                    setAdvanceTempfilters(updated);
+                                  }}
+                                />
+                              ))}
+
+                              <Chip
+                                size="small"
+                                label="Clear All"
+                                color="error"
+                                onClick={() => {
+                                  setAdvancefilters({});
+                                  setAdvanceTempfilters({});
+                                }}
+                              />
+                            </Stack>
+                          </Box>
+                        )}
+                      </>
+                    ),
+                  }}
                 />
               </Box>
               <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>

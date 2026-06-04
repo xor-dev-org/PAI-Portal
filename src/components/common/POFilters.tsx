@@ -55,14 +55,11 @@ const POFilters: React.FC<POFiltersProps> = ({
   ];
 
   return (
-    <Paper sx={{ p: 1, mb: 2 }}>
-      <Stack 
-        direction={{ xs: 'column', md: 'row' }} 
-        spacing={2} 
-        alignItems={{ xs: 'stretch', md: 'center' }}
+    <Paper sx={{ p: 1, mb: 2, borderRadius: 0 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right', gap: 2, flexWrap: 'wrap' }}
       >
-        <TextField
-          fullWidth
+        {/* <TextField
+          
           size="small"
           placeholder="Search PO Number, Supplier..."
           value={searchQuery}
@@ -71,7 +68,7 @@ const POFilters: React.FC<POFiltersProps> = ({
             startAdornment: <SearchIcon sx={{ mr: 1, color: 'action.active' }} />,
           }}
           sx={{ flex: 1 }}
-        />
+        /> */}
 
         <TextField
           select
@@ -121,7 +118,7 @@ const POFilters: React.FC<POFiltersProps> = ({
             </IconButton>
           </Tooltip>
         </Box>
-      </Stack>
+      </Box>
     </Paper>
   );
 };
