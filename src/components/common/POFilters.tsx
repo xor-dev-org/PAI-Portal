@@ -25,6 +25,9 @@ interface POFiltersProps {
   viewMode: 'grid' | 'list';
   onViewModeChange: (mode: 'grid' | 'list') => void;
   onFiltersClick: () => void;
+  pinFilter: string;
+  onPinFilterChange: (value: string) => void;
+  
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
@@ -37,6 +40,8 @@ const POFilters: React.FC<POFiltersProps> = ({
   viewMode,
   onViewModeChange,
   onFiltersClick,
+  pinFilter,
+  onPinFilterChange,
 }) => {
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -52,6 +57,11 @@ const POFilters: React.FC<POFiltersProps> = ({
   const sortOptions = [
     { value: 'delivery_date_desc', label: 'Latest First' },
     { value: 'delivery_date_asc', label: 'Oldest First' },
+  ];
+
+  const pinOptions = [
+    { value: 'all', label: 'All POs' },
+    { value: 'pinned', label: 'Pinned Only' },
   ];
 
   return (
@@ -102,6 +112,23 @@ const POFilters: React.FC<POFiltersProps> = ({
           sx={{ minWidth: 180 }}
         >
           {sortOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          size="small"
+          value={pinFilter}
+          onChange={(e) => onPinFilterChange(e.target.value)}
+          sx={{ minWidth: 150 }}
+          SelectProps={{
+            displayEmpty: true,
+          }}
+        >
+          {pinOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
             </MenuItem>
