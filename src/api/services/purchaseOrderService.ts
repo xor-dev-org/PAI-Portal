@@ -1,4 +1,5 @@
 import apiClient from '../axios';
+import { logger } from '@/services/logger';
 import { PurchaseOrder, POListResponse, POFilters } from '@/models';
 
 export const purchaseOrderService = {
@@ -26,7 +27,13 @@ export const purchaseOrderService = {
     if (filters.delivery_date_from) params.append('delivery_date_from', filters.delivery_date_from);
     if (filters.delivery_date_to) params.append('delivery_date_to', filters.delivery_date_to);
 
-    const response = await apiClient.get<POListResponse>(`/po?${params.toString()}`);
+    const url = `/po?${params.toString()}`;
+    const startTime = performance.now();
+    const response = await apiClient.get<POListResponse>(url);
+    logger.info('Purchase order API call completed', {
+      url,
+      durationMs: Math.round(performance.now() - startTime),
+    });
     return response.data;
   },
 

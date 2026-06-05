@@ -1,28 +1,18 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   TextField,
-  MenuItem,
   IconButton,
   Tooltip,
-  Stack,
   Paper,
-  Button,
-  Typography,
-  ButtonBase,
+  InputAdornment,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import SortIcon from '@mui/icons-material/Sort';
-import ViewModuleIcon from '@mui/icons-material/ViewModule';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import { PurchaseOrderStatus } from '@/models';
 import {
   GridToolbarColumnsButton,
   GridToolbarDensitySelector,
   GridToolbarExport,
-  GridToolbarFilterButton,
-  GridToolbarQuickFilter,
 } from '@mui/x-data-grid';
 import { PushPin, PushPinOutlined } from '@mui/icons-material';
 
@@ -43,44 +33,23 @@ interface POFiltersProps {
 const POFilters: React.FC<POFiltersProps> = ({
   searchQuery,
   onSearchChange,
-  statusFilter,
-  onStatusChange,
-  sortOrder,
-  onSortChange,
-  viewMode,
-  onViewModeChange,
+  statusFilter: _statusFilter,
+  onStatusChange: _onStatusChange,
+  sortOrder: _sortOrder,
+  onSortChange: _onSortChange,
+  viewMode: _viewMode,
+  onViewModeChange: _onViewModeChange,
   onFiltersClick,
   pinFilter,
   onPinFilterChange,
 }) => {
-  const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: PurchaseOrderStatus.CREATED, label: 'Created' },
-    { value: PurchaseOrderStatus.IN_PROGRESS, label: 'In Progress' },
-    { value: PurchaseOrderStatus.APPROVED, label: 'Approved' },
-    { value: PurchaseOrderStatus.SENT_TO_SUPPLIER, label: 'Sent to Supplier' },
-    { value: PurchaseOrderStatus.IN_TRANSIT, label: 'In Transit' },
-    { value: PurchaseOrderStatus.DELIVERED, label: 'Delivered' },
-    { value: PurchaseOrderStatus.CANCELLED, label: 'Cancelled' },
-  ];
-
-  const sortOptions = [
-    { value: 'delivery_date_desc', label: 'Latest First' },
-    { value: 'delivery_date_asc', label: 'Oldest First' },
-  ];
-
-  const pinOptions = [
-    { value: 'all', label: 'All POs' },
-    { value: 'pinned', label: 'Pinned Only' },
-  ];
-
   return (
-    <Paper sx={{ p: 1, mb: 1, borderRadius: 0, boxShadow: 0 }}>
+    <Paper sx={{ p: 1, mb: 0, borderRadius: 0, boxShadow: 0 }}>
       <Box
         sx={{
           display: 'flex',
-          justifyContent: 'right',
-          alignItems: 'right',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
           gap: 2,
           flexWrap: 'wrap',
           shadow: 0,
@@ -95,7 +64,7 @@ const POFilters: React.FC<POFiltersProps> = ({
           InputProps={{
             startAdornment: <SearchIcon sx={{ mr: 1, color: 'action.active' }} />,
           }}
-          sx={{ flex: 1 }}
+          sx={{ flex: 1, maxWidth: '25%', fontSize: '0.8125rem' }}
         /> */}
 
         {/* <TextField
@@ -116,19 +85,48 @@ const POFilters: React.FC<POFiltersProps> = ({
           ))}
         </TextField> */}
 
-        <GridToolbarQuickFilter />
-        <GridToolbarDensitySelector />
-        <GridToolbarColumnsButton />
-        {/* <GridToolbarFilterButton
-          slotProps={{
-            button: (
-              <IconButton onClick={onFiltersClick} color="primary">
-                <FilterListIcon />
-              </IconButton>
+        <TextField
+          size="small"
+          variant="outlined"
+          placeholder="Search PO Number, Supplier..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
             ),
           }}
-        /> */}
-        <GridToolbarExport />
+          sx={{ minWidth: 240, flex: 1 }}
+        />
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            '& .MuiButton-root': { minWidth: 40, px: 1, py: 0.5 },
+            '& .MuiButton-startIcon + span': { display: 'none' },
+          }}
+        >
+          <GridToolbarDensitySelector slotProps={{ button: { sx: { minWidth: 40, px: 1, py: 0.5 } } }} />
+          <GridToolbarColumnsButton slotProps={{ button: { sx: { minWidth: 40, px: 1, py: 0.5 } } }} />
+          <GridToolbarExport slotProps={{ button: { sx: { minWidth: 40, px: 1, py: 0.5 } } }} />
+          <Tooltip title="Advanced Filters">
+            <IconButton onClick={onFiltersClick} color="primary" size="small">
+              <FilterListIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={pinFilter === 'pinned' ? 'Show All POs' : 'Show Pinned Only'}>
+            <IconButton
+              onClick={() => onPinFilterChange(pinFilter === 'pinned' ? 'all' : 'pinned')}
+              color="primary"
+              size="small"
+            >
+              {pinFilter === 'pinned' ? <PushPin /> : <PushPinOutlined />}
+            </IconButton>
+          </Tooltip>
+        </Box>
 
         {/* <TextField
           select
@@ -164,36 +162,6 @@ const POFilters: React.FC<POFiltersProps> = ({
           ))}
         </TextField> */}
 
-        <Box sx={{ display: 'flex', gap: 1, fontSize: '0.8125rem' }}>
-          <Tooltip title="Advanced Filters">
-            <Button onClick={onFiltersClick} color="primary">
-              <FilterListIcon />
-              <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
-                Filters
-              </Typography>
-            </Button>
-          </Tooltip>
-          <Tooltip title="Pinned Rows">
-            <Button
-              onClick={(e) => {
-                onPinFilterChange(pinFilter === 'pinned' ? 'all' : 'pinned');
-              }}
-              color="primary"
-              sx={{fontSize: '0.8125rem'}}
-            >
-              {pinFilter === 'pinned' ? <PushPin /> : <PushPinOutlined />}
-              {/* <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
-                {pinFilter === 'pinned' ? 'Pinned Only' : 'All POs'}
-              </Typography> */}
-            </Button>
-          </Tooltip>
-
-          <Tooltip title={viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}>
-            <IconButton onClick={() => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid')}>
-              {viewMode === 'grid' ? <ViewListIcon /> : <ViewModuleIcon />}
-            </IconButton>
-          </Tooltip>
-        </Box>
       </Box>
     </Paper>
   );

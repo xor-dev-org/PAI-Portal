@@ -34,8 +34,6 @@ interface SidebarProps {
   onDrawerToggle: () => void;
 }
 
-
-
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,16 +43,41 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
   const { user } = useAuth();
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon color={location.pathname === '/dashboard'? 'primary': 'secondary'} />, path: '/dashboard', allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER] },
-    { text: 'PO Listing', icon: <ReceiptIcon color={location.pathname === '/purchase-orders'? 'primary': 'secondary'} />, path: '/purchase-orders', allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER] },
-    { text: 'Delegation', icon: <DelegationIcon color={location.pathname === '/delegation'? 'primary': 'secondary'} />, path: '/delegation', allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST] },
-    { text: 'Chat', icon: <ChatIcon color={location.pathname === '/chat'? 'primary': 'secondary'}/>, path: '/chat', allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER] },
-    { text: 'Settings', icon: <SettingsIcon color={location.pathname === '/settings'? 'primary': 'secondary'} />, path: '/settings', allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER] },
+    {
+      text: 'Dashboard',
+      icon: <DashboardIcon />,
+      path: '/dashboard',
+      allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER],
+    },
+    {
+      text: 'PO Listing',
+      icon: <ReceiptIcon />,
+      path: '/purchase-orders',
+      allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER],
+    },
+    {
+      text: 'Delegation',
+      icon: <DelegationIcon />,
+      path: '/delegation',
+      allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST],
+    },
+    {
+      text: 'Chat',
+      icon: <ChatIcon />,
+      path: '/chat',
+      allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER],
+    },
+    {
+      text: 'Settings',
+      icon: <SettingsIcon />,
+      path: '/settings',
+      allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER],
+    },
   ];
 
   // Filter menu items based on user role
-  const filteredMenuItems = menuItems.filter(item =>
-    !user?.role || item.allowedRoles.includes(user.role)
+  const filteredMenuItems = menuItems.filter(
+    (item) => !user?.role || item.allowedRoles.includes(user.role)
   );
 
   const handleNavigation = (path: string) => {
@@ -69,61 +92,104 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
   };
 
   const drawer = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }} bgcolor={'primary.main'} color={'white'}>
-      <Toolbar />
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        borderRight: '1px solid',
+        borderColor: 'divider',
+        marginTop: '5rem',
+      }}
+    >
+      <Toolbar
+        sx={{
+          px: 0,
+          py: 0,
+          marginLeft: 0,
+          minHeight: 88,
+          bgcolor: 'background.default',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+        }}
+      >
+        {!collapsed ? (
+          <Box
+            component="img"
+            src="/fls_logo.png"
+            alt="App logo"
+            sx={{ width: '100%', height: 50, objectFit: 'contain' }}
+          />
+        ) : (
+          <Box
+            component="img"
+            src="/fls_logo.png"
+            alt="Logo"
+            sx={{ width: 40, height: 40, objectFit: 'contain' }}
+          />
+        )}
+      </Toolbar>
       <Divider />
-      <List sx={{ flexGrow: 1 }}>
-        {filteredMenuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                justifyContent: collapsed ? 'center' : 'initial',
-                px: 2.5,
-                borderRadius: '12px',
-                mx: 1,
+      <List sx={{ flexGrow: 1, p: 0 }}>
+        {filteredMenuItems.map((item) => {
+          const isSelected =
+            location.pathname === item.path ||
+            (item.path !== '/' && location.pathname.startsWith(item.path));
 
-                color: 'white',
-
-                '&.Mui-selected': {
-                  backgroundColor: theme.palette.secondary.main,
-                  color: theme.palette.primary.contrastText,
-
-                  '& .MuiListItemIcon-root': {
+          return (
+            <ListItem key={item.text} disablePadding>
+              <ListItemButton
+                selected={isSelected}
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  justifyContent: collapsed ? 'center' : 'initial',
+                  px: 2.5,
+                  borderRadius: '0px',
+                  mx: 0,
+                  color: 'text.primary',
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.secondary.light,
+                    color: theme.palette.text.primary,
+                    '& .MuiListItemIcon-root': {
+                      color: theme.palette.text.primary,
+                    },
+                  },
+                  '&.Mui-selected:hover': {
+                    backgroundColor: theme.palette.secondary.main,
                     color: theme.palette.primary.contrastText,
                   },
-                },
-
-                '&.Mui-selected:hover': {
-                  backgroundColor: theme.palette.secondary.dark,
-                },
-
-                '&:hover': {
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                },
-              }}
-            >
-              <ListItemIcon
-                color='white'
-                sx={{
-                  minWidth: 0,
-                  mr: collapsed ? 'auto' : 3,
-                  justifyContent: 'center',
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
-              {!collapsed && <ListItemText primary={item.text} />}
-            </ListItemButton>
-          </ListItem>
-        ))}
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: collapsed ? 'auto' : 3,
+                    justifyContent: 'center',
+                    color: 'inherit',
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary={item.text} />}
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
 
       {!isMobile && (
         <>
           <Divider />
-          <Box bgcolor={theme.palette.secondary.dark} sx={{ p: 1, display: 'flex', justifyContent: 'center' }}>
+          <Box
+            bgcolor={theme.palette.secondary.dark}
+            sx={{ p: 1, display: 'flex', justifyContent: 'center' }}
+          >
             <IconButton onClick={toggleCollapse}>
               {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
             </IconButton>
@@ -140,9 +206,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
         width: { sm: collapsed ? miniDrawerWidth : drawerWidth },
         flexShrink: { sm: 0 },
         transition: 'width 0.2s',
+        bgcolor: 'background.paper',
       }}
       aria-label="navigation menu"
-      bgcolor={theme.palette.secondary.main}
     >
       {/* Mobile drawer */}
       <Drawer
@@ -159,7 +225,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
             width: drawerWidth,
           },
         }}
-
       >
         {drawer}
       </Drawer>

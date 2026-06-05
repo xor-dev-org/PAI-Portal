@@ -124,7 +124,7 @@ const ChatWidget: React.FC = () => {
   };
 
   return (
-    <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: (theme) => theme.zIndex.drawer + 10 }}>
+    <Box sx={{ position: 'fixed', bottom: 60, right: 16, zIndex: (theme) => theme.zIndex.drawer + 10 }}>
       {open ? (
         <Paper elevation={12} sx={{ width: 900, maxWidth: 'calc(100vw - 24px)', height: 680, maxHeight: 'calc(100vh - 24px)', display: 'flex', overflow: 'hidden', borderRadius: 3 }}>
           <Box sx={{ width: 320, borderRight: `1px solid ${theme.palette.divider}`, display: 'flex', flexDirection: 'column', backgroundColor: theme.palette.background.default }}>

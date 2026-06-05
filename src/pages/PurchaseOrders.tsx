@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Pagination,
   useTheme,
   TextField,
   MenuItem,
@@ -22,7 +21,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
@@ -34,14 +33,15 @@ import {
   PurchaseOrderStatus,
 } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
-import POCard from '@/components/common/POCard';
 import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { useDebounce } from '@/hooks/useDebounce';
+import { usePagination } from '@/hooks/usePagination';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
 // import StarIcon from '@mui/icons-material/Star';
 // import StarBorderIcon from '@mui/icons-material/StarBorder';
- 
+
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 //import { userService } from '@/api/services/userService';
@@ -60,9 +60,9 @@ const PurchaseOrders: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('delivery_date_desc');
-  const [page, setPage] = useState(0); // DataGrid uses 0-based page
-  const pageSize = 60;
+  const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
   const [rowCount, setRowCount] = useState(0);
+  const debouncedSearchQuery = useDebounce(searchQuery, 600);
 
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -89,6 +89,7 @@ const PurchaseOrders: React.FC = () => {
   }, []);
 
   const fetchPurchaseOrders = useCallback(async () => {
+    const startTime = performance.now();
     try {
       setLoading(true);
       setError(null);
@@ -97,17 +98,18 @@ const PurchaseOrders: React.FC = () => {
         page: page + 1,
         page_size: pageSize,
         status: statusFilter,
-        sort_by: (sortOrder as 'delivery_date_asc' | 'delivery_date_desc'),
-        search: searchQuery,
+        sort_by: sortOrder as 'delivery_date_asc' | 'delivery_date_desc',
+        search: debouncedSearchQuery,
         ...advanceFilters,
       };
 
-      console.log('adv: ', advanceFilters);
-
-      logger.info(
-        'Fetching purchase orders with filters',
-        filters.status ? { status: filters.status } : {}
-      );
+      logger.info('Fetching purchase orders', {
+        page: filters.page,
+        pageSize: filters.page_size,
+        status: filters.status,
+        search: debouncedSearchQuery,
+        advanceFilters: Object.keys(advanceFilters).length,
+      });
 
       if (user?.role === 'SUPPLIER') {
         filters.supplier_id = user.id;
@@ -117,18 +119,24 @@ const PurchaseOrders: React.FC = () => {
 
       const response = await purchaseOrderService.getPOList(filters);
       setPurchaseOrders(response.data);
-      console.log('PO: ', response.data);
-      // const pinned_columns = await userService.getPinnedColumns(user!.id);
-      // console.log('PC: ', pinned_columns);
       setRowCount(response.total);
+
+      logger.info('Purchase orders fetched', {
+        durationMs: Math.round(performance.now() - startTime),
+        rowCount: response.total,
+      });
     } catch (err) {
       const error = err as { response?: { data?: { detail?: string } } };
       console.error('Error fetching purchase orders:', error);
       setError(error.response?.data?.detail || 'Failed to load purchase orders');
+      logger.error('Failed to fetch purchase orders', {
+        durationMs: Math.round(performance.now() - startTime),
+        error: error.response?.data?.detail || error,
+      });
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, statusFilter, sortOrder, searchQuery, user, advanceFilters]);
+  }, [page, pageSize, statusFilter, sortOrder, debouncedSearchQuery, user, advanceFilters]);
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -194,10 +202,14 @@ const PurchaseOrders: React.FC = () => {
   }[];
 
   // For DataGrid pagination
-  // const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
-  //   setPage(model.page);
-  //   setPageSize(model.pageSize);
-  // };
+  const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
+    if (model.pageSize !== pageSize) {
+      setPageSize(model.pageSize);
+      setPage(0);
+    } else {
+      setPage(model.page);
+    }
+  };
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -252,18 +264,21 @@ const PurchaseOrders: React.FC = () => {
     setShowAdvancedFilters(false);
   };
 
-  const statusColors: Record<
-    PurchaseOrderStatus,
-    'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
-  > = {
-    CREATED: 'default',
-    APPROVED: 'info',
-    SENT_TO_SUPPLIER: 'primary',
-    IN_TRANSIT: 'warning',
-    DELIVERED: 'success',
-    CANCELLED: 'error',
-    IN_PROGRESS: 'warning',
-  };
+  const statusColors = React.useMemo(
+    () => ({
+      CREATED: 'default',
+      APPROVED: 'info',
+      SENT_TO_SUPPLIER: 'primary',
+      IN_TRANSIT: 'warning',
+      DELIVERED: 'success',
+      CANCELLED: 'error',
+      IN_PROGRESS: 'warning',
+    }) as Record<
+      PurchaseOrderStatus,
+      'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
+    >,
+    []
+  );
 
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
@@ -283,9 +298,7 @@ const PurchaseOrders: React.FC = () => {
                 togglePin(params.row.id);
               }}
               sx={{
-                color: pinnedPOIds.includes(params.row.id)
-                  ? 'primary.main'
-                  : 'action.disabled',
+                color: pinnedPOIds.includes(params.row.id) ? 'primary.main' : 'action.disabled',
                 '&:hover': {
                   bgcolor: 'action.hover',
                 },
@@ -377,7 +390,7 @@ const PurchaseOrders: React.FC = () => {
         renderCell: (params) => params.value,
       },
     ],
-    [theme, pinnedPOIds, togglePin]
+    [theme, pinnedPOIds, togglePin, statusColors]
   );
 
   if (loading && purchaseOrders.length === 0) {
@@ -392,59 +405,6 @@ const PurchaseOrders: React.FC = () => {
       <Typography variant="body2" gutterBottom fontWeight="bold">
         Updated on {new Date().toLocaleString()}
       </Typography>
-      {/* <POFilters
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        statusFilter={statusFilter}
-        onStatusChange={(value) => {
-          setStatusFilter(value);
-          setPage(0);
-        }}
-        sortOrder={sortOrder}
-        onSortChange={(value) => {
-          setSortOrder(value);
-          setPage(0);
-        }}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onFiltersClick={() => setShowAdvancedFilters(true)}
-        pinFilter={pinFilter}
-        onPinFilterChange={(value) => {
-          setPinFilter(value);
-          setPage(0);
-        }}
-      />
-      {appliedFilters.length > 0 && (
-        <Box height={'2vh'} sx={{ mb: 2 }}>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {appliedFilters.map((filter) => (
-              <Chip
-                key={filter.key}
-                label={filter.label}
-                size="small"
-                color="primary"
-                variant="outlined"
-                onDelete={() => {
-                  const updated = { ...advanceFilters };
-                  delete updated[filter.key];
-                  setAdvancefilters(updated);
-                  setAdvanceTempfilters(updated);
-                }}
-              />
-            ))}
-
-            <Chip
-              size="small"
-              label="Clear All"
-              color="error"
-              onClick={() => {
-                setAdvancefilters({});
-                setAdvanceTempfilters({});
-              }}
-            />
-          </Stack>
-        </Box>
-      )} */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -455,192 +415,105 @@ const PurchaseOrders: React.FC = () => {
         <Alert severity="info">No purchase orders found</Alert>
       ) : (
         <>
-          {viewMode === 'grid' ? (
-            <>
-              <Box
-                sx={{
-                  height: appliedFilters.length > 0 ? '68vh' : '72vh',
+          <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
+            <DataGrid
+              rows={filteredAndSortedPOs}
+              columns={columns}
+              rowCount={rowCount}
+              rowHeight={35}
+              getRowClassName={(params) => {
+                // console.log('params: ', params);
+                return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
+              }}
+              pagination
+              paginationMode="server"
+              // rowCountMode="server"
+              pageSizeOptions={[10, 25, 50, 60, 100]}
+              loading={loading}
+              onPaginationModelChange={handlePaginationModelChange}
+              paginationModel={{ page, pageSize }}
+              getRowId={(row) => row.id}
+              disableRowSelectionOnClick
+              hideFooterSelectedRowCount
+              onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
+              sx={{
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                  fontSize: '0.8rem',
+                },
+
+                '& .MuiDataGrid-toolbarContainer': {
+                  justifyContent: 'flex-end',
                   width: '100%',
-                  overflowY: 'scroll',
-                }}
-              >
-                <Grid container spacing={3}>
-                  {filteredAndSortedPOs.map((po) => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
-                      <Box sx={{ position: 'relative' }}>
-                        <POCard po={po} onClick={handlePOClick} />
-                        <Tooltip title={pinnedPOIds.includes(po.id) ? 'Unpin' : 'Pin'}>
-                          <IconButton
+                },
+              }}
+              slots={{
+                toolbar: () => (
+                  <>
+                    <POFilters
+                      searchQuery={searchQuery}
+                      onSearchChange={handleSearchChange}
+                      statusFilter={statusFilter}
+                      onStatusChange={(value) => {
+                        setStatusFilter(value);
+                        setPage(0);
+                      }}
+                      sortOrder={sortOrder}
+                      onSortChange={(value) => {
+                        setSortOrder(value);
+                        setPage(0);
+                      }}
+                      viewMode={viewMode}
+                      onViewModeChange={setViewMode}
+                      onFiltersClick={() => setShowAdvancedFilters(true)}
+                      pinFilter={pinFilter}
+                      onPinFilterChange={(value) => {
+                        setPinFilter(value);
+                        setPage(0);
+                      }}
+                    />
+                    <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
+                      {/* <Typography variant="subtitle2" color="text.secondary" sx={{ ml: 1 }}>
+                        {rowCount} purchase orders.
+                      </Typography> */}
+                      {appliedFilters.length > 0 && (
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          {appliedFilters.map((filter) => (
+                            <Chip
+                              key={filter.key}
+                              label={filter.label}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              onDelete={() => {
+                                const updated = { ...advanceFilters };
+                                delete updated[filter.key];
+                                setAdvancefilters(updated);
+                                setAdvanceTempfilters(updated);
+                              }}
+                            />
+                          ))}
+
+                          <Chip
                             size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePin(po.id);
+                            label="Clear All"
+                            color="error"
+                            onClick={() => {
+                              setAdvancefilters({});
+                              setAdvanceTempfilters({});
                             }}
-                            sx={{
-                              position: 'absolute',
-                              top: 8,
-                              right: 8,
-                              color: pinnedPOIds.includes(po.id)
-                                ? 'primary.main'
-                                : 'action.disabled',
-                              backgroundColor: 'background.paper',
-                              '&:hover': {
-                                backgroundColor: 'action.hover',
-                              },
-                              boxShadow: 1,
-                            }}
-                          >
-                            {pinnedPOIds.includes(po.id) ? (
-                              <PushPinIcon sx={{ fontSize: '1.25rem' }} />
-                            ) : (
-                              <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-              <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
-                <Pagination
-                  count={Math.ceil(rowCount / pageSize)}
-                  page={page + 1}
-                  onChange={(_, value) => setPage(value - 1)}
-                  color="primary"
-                  size="small"
-                />
-              </Box>
-            </>
-          ) : (
-            <>
-              <Box sx={{ height: appliedFilters.length > 0 ? '68vh' : '72vh', width: '100%' }}>
-                <DataGrid
-                  rows={filteredAndSortedPOs}
-                  columns={columns}
-                  rowCount={rowCount}
-                  rowHeight={35}
-                  getRowClassName={(params) => {
-                    // console.log('params: ', params);
-                    return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
-                  }}
-                  // pagination
-                  paginationMode="server"
-                  filterMode="server"
-                  // paginationModel={{ page, pageSize }}
-                  // onPaginationModelChange={handlePaginationModelChange}
-                  // hideFooterPagination
-                  hideFooter
-                  onFilterModelChange={(e) => {
-                    console.log('filter model: ', e);
-                    // const key = e.
-                    // setAdvanceTempfilters((prev) => {
-                    //   const updated = {
-                    //     ...prev,
-                    //     [key]: value,
-                    //   };
-
-                    //   return updated;
-                    // });
-                  }}
-                  disableRowSelectionOnClick
-                  hideFooterSelectedRowCount
-                  onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
-                  sx={{
-                    '& .MuiDataGrid-row': {
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                      fontSize: '0.8rem',
-                    },
-
-                    '& .MuiDataGrid-toolbarContainer': {
-                      justifyContent: 'flex-end',
-                      width: '100%',
-                    },
-                  }}
-                  // filterModel={{
-                  //   items: [
-                  //     { field: 'po_number', operator: 'contains', value: '' },
-                  //     { field: 'supplier_name', operator: 'contains', value: '' },
-                  //   ],
-                  // }}
-                  // slots={{
-                  //   toolbar: () => <GridToolbar sx={{ fontSize: '0.8rem', height: '4.5rem' }} />,
-                  // }}
-                  slots={{
-                    toolbar: () => (
-                      <>
-                        <POFilters
-                          searchQuery={searchQuery}
-                          onSearchChange={handleSearchChange}
-                          statusFilter={statusFilter}
-                          onStatusChange={(value) => {
-                            setStatusFilter(value);
-                            setPage(0);
-                          }}
-                          sortOrder={sortOrder}
-                          onSortChange={(value) => {
-                            setSortOrder(value);
-                            setPage(0);
-                          }}
-                          viewMode={viewMode}
-                          onViewModeChange={setViewMode}
-                          onFiltersClick={() => setShowAdvancedFilters(true)}
-                          pinFilter={pinFilter}
-                          onPinFilterChange={(value) => {
-                            setPinFilter(value);
-                            setPage(0);
-                          }}
-                        />
-                        {appliedFilters.length > 0 && (
-                          <Box height={'2vh'} sx={{ mb: 2 }}>
-                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                              {appliedFilters.map((filter) => (
-                                <Chip
-                                  key={filter.key}
-                                  label={filter.label}
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                  onDelete={() => {
-                                    const updated = { ...advanceFilters };
-                                    delete updated[filter.key];
-                                    setAdvancefilters(updated);
-                                    setAdvanceTempfilters(updated);
-                                  }}
-                                />
-                              ))}
-
-                              <Chip
-                                size="small"
-                                label="Clear All"
-                                color="error"
-                                onClick={() => {
-                                  setAdvancefilters({});
-                                  setAdvanceTempfilters({});
-                                }}
-                              />
-                            </Stack>
-                          </Box>
-                        )}
-                      </>
-                    ),
-                  }}
-                />
-              </Box>
-              <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
-                <Pagination
-                  count={Math.ceil(rowCount / pageSize)}
-                  page={page + 1}
-                  onChange={(_, value) => setPage(value - 1)}
-                  color="primary"
-                  size="small"
-                />
-              </Box>
-            </>
-          )}
+                          />
+                        </Stack>
+                      )}
+                    </Box>
+                  </>
+                ),
+              }}
+            />
+          </Box>
         </>
       )}
       {/* Advanced Filters Dialog */}
