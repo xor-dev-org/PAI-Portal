@@ -22,11 +22,12 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
+import { userService } from '@/api/services/userService';
 import {
   PurchaseOrder,
   POFilters as POFiltersType,
@@ -70,23 +71,131 @@ const PurchaseOrders: React.FC = () => {
   const [advanceTempFilters, setAdvanceTempfilters] = useState<AdvanceFilters>({});
   // const advanceFiltersRef = useRef<AdvanceFilters>({});
 
-  // Pin functionality
-  const [pinnedPOIds, setPinnedPOIds] = useState<string[]>(() => {
-    const stored = localStorage.getItem('pinnedPOs');
-    return stored ? JSON.parse(stored) : [];
-  });
+  // Pin functionality (scoped per-user)
+  const [pinnedPOIds, setPinnedPOIds] = useState<string[]>([]);
   const [pinFilter, setPinFilter] = useState('all'); // 'all', 'pinned'
+  const [pinnedPOsDisplayed, setPinnedPOsDisplayed] = useState<PurchaseOrder[]>([]);
 
-  // Update localStorage when pinnedPOIds changes
+  // Load per-user pinned ids when user changes
   useEffect(() => {
-    localStorage.setItem('pinnedPOs', JSON.stringify(pinnedPOIds));
-  }, [pinnedPOIds]);
+    let mounted = true;
+    const loadPinned = async () => {
+      if (!user || !user.id) {
+        setPinnedPOIds([]);
+        return;
+      }
+
+      try {
+        // Try loading from backend first
+        const serverPinned = await userService.getPinnedRows(user.id);
+        if (mounted) {
+          setPinnedPOIds(serverPinned || []);
+          pinnedInitializedRef.current = true;
+        }
+      } catch (err) {
+        // Fallback to localStorage
+        try {
+          const key = `pinnedPOs:${user.id}`;
+          const stored = localStorage.getItem(key);
+          if (mounted) setPinnedPOIds(stored ? JSON.parse(stored) : []);
+          if (mounted) pinnedInitializedRef.current = true;
+        } catch (e) {
+          console.error('Error loading pinned POs from localStorage', e);
+          if (mounted) setPinnedPOIds([]);
+          if (mounted) pinnedInitializedRef.current = true;
+        }
+      }
+    };
+
+    loadPinned();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  // Track whether we've loaded initial pinned IDs from server/local before persisting
+  const pinnedInitializedRef = useRef(false);
+
+  // Update per-user localStorage when pinnedPOIds changes
+  useEffect(() => {
+    if (!user || !user.id) return;
+
+    const key = `pinnedPOs:${user.id}`;
+    try {
+      localStorage.setItem(key, JSON.stringify(pinnedPOIds));
+    } catch (err) {
+      console.error('Error saving pinned POs to localStorage', err);
+    }
+
+    // Don't persist to backend until we've finished the initial load to avoid overwriting
+    if (!pinnedInitializedRef.current) {
+      return;
+    }
+
+    // Persist to backend
+    (async () => {
+      try {
+        await userService.updatePinnedRows(user.id, pinnedPOIds);
+      } catch (err) {
+        console.error('Error updating pinned rows on server', err);
+      }
+    })();
+  }, [pinnedPOIds, user]);
 
   const togglePin = useCallback((poId: string) => {
     setPinnedPOIds((prev) =>
       prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId]
     );
   }, []);
+
+  // When pinFilter is 'pinned', fetch full PO details for all pinned IDs so we can show them across pages
+  useEffect(() => {
+    let mounted = true;
+    const fetchPinned = async () => {
+      if (pinFilter !== 'pinned') {
+        setPinnedPOsDisplayed([]);
+        return;
+      }
+
+      if (!pinnedPOIds || pinnedPOIds.length === 0) {
+        setPinnedPOsDisplayed([]);
+        return;
+      }
+
+      try {
+        const promises = pinnedPOIds.map((id) => purchaseOrderService.getPOById(id));
+        const results = await Promise.allSettled(promises);
+        const successful = results
+          .filter((result): result is PromiseFulfilledResult<PurchaseOrder> => result.status === 'fulfilled')
+          .map((result) => result.value);
+
+        // Only display pinned POs that are assigned to the current user
+        const visible = successful.filter((po) => {
+          if (!user) return false;
+          if (user.role === 'SUPPLIER') return po.supplier_id === user.id;
+          if (user.role === 'PROCUREMENT_SPECIALIST') return po.procurement_specialist_id === user.id;
+          return true;
+        });
+
+        if (mounted) {
+          setPinnedPOsDisplayed(visible);
+          if (successful.length !== pinnedPOIds.length) {
+            setPinnedPOIds(successful.map((po) => po.id));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching pinned POs:', err);
+        if (mounted) setPinnedPOsDisplayed([]);
+      }
+    };
+
+    fetchPinned();
+
+    return () => {
+      mounted = false;
+    };
+  }, [pinFilter, pinnedPOIds, user]);
 
   const fetchPurchaseOrders = useCallback(async () => {
     try {
@@ -210,6 +319,8 @@ const PurchaseOrders: React.FC = () => {
 
     // Apply pin filter
     if (pinFilter === 'pinned') {
+      // When in 'pinned' mode, the list of POs to show is fetched separately (pinnedPOsDisplayed).
+      // Keep this branch for compatibility but return purchaseOrders filtered if pinnedPOsDisplayed not available.
       filtered = filtered.filter((po) => pinnedPOIds.includes(po.id));
     } else if (pinFilter === 'unpinned') {
       filtered = filtered.filter((po) => !pinnedPOIds.includes(po.id));
@@ -224,6 +335,12 @@ const PurchaseOrders: React.FC = () => {
       return 0;
     });
   }, [purchaseOrders, pinnedPOIds, pinFilter]);
+
+  const displayRows = pinFilter === 'pinned' ? pinnedPOsDisplayed : filteredAndSortedPOs;
+  const displayRowCount = pinFilter === 'pinned' ? pinnedPOsDisplayed.length : rowCount;
+  const displayPage = pinFilter === 'pinned' ? 1 : page + 1;
+  const displayPageCount = Math.max(1, Math.ceil(displayRowCount / pageSize));
+
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
     key: K,
     value: AdvanceFilters[K]
@@ -252,22 +369,23 @@ const PurchaseOrders: React.FC = () => {
     setShowAdvancedFilters(false);
   };
 
-  const statusColors: Record<
-    PurchaseOrderStatus,
-    'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
-  > = {
-    CREATED: 'default',
-    APPROVED: 'info',
-    SENT_TO_SUPPLIER: 'primary',
-    IN_TRANSIT: 'warning',
-    DELIVERED: 'success',
-    CANCELLED: 'error',
-    IN_PROGRESS: 'warning',
-  };
-
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
-    () => [
+    () => {
+      const statusColors: Record<
+        PurchaseOrderStatus,
+        'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
+      > = {
+        CREATED: 'default',
+        APPROVED: 'info',
+        SENT_TO_SUPPLIER: 'primary',
+        IN_TRANSIT: 'warning',
+        DELIVERED: 'success',
+        CANCELLED: 'error',
+        IN_PROGRESS: 'warning',
+      };
+
+      return [
       {
         field: 'pin',
         headerName: 'Pin',
@@ -376,9 +494,8 @@ const PurchaseOrders: React.FC = () => {
         width: 150,
         renderCell: (params) => params.value,
       },
-    ],
-    [theme, pinnedPOIds, togglePin]
-  );
+    ];
+  }, [theme, pinnedPOIds, togglePin]);
 
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
@@ -465,7 +582,7 @@ const PurchaseOrders: React.FC = () => {
                 }}
               >
                 <Grid container spacing={3}>
-                  {filteredAndSortedPOs.map((po) => (
+                  {displayRows.map((po) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={po.id}>
                       <Box sx={{ position: 'relative' }}>
                         <POCard po={po} onClick={handlePOClick} />
@@ -504,8 +621,8 @@ const PurchaseOrders: React.FC = () => {
               </Box>
               <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
                 <Pagination
-                  count={Math.ceil(rowCount / pageSize)}
-                  page={page + 1}
+                  count={displayPageCount}
+                  page={displayPage}
                   onChange={(_, value) => setPage(value - 1)}
                   color="primary"
                   size="small"
@@ -516,9 +633,9 @@ const PurchaseOrders: React.FC = () => {
             <>
               <Box sx={{ height: appliedFilters.length > 0 ? '68vh' : '72vh', width: '100%' }}>
                 <DataGrid
-                  rows={filteredAndSortedPOs}
+                  rows={displayRows}
                   columns={columns}
-                  rowCount={rowCount}
+                  rowCount={displayRowCount}
                   rowHeight={35}
                   getRowClassName={(params) => {
                     // console.log('params: ', params);
@@ -593,6 +710,7 @@ const PurchaseOrders: React.FC = () => {
                             setPinFilter(value);
                             setPage(0);
                           }}
+                          pinnedCount={pinnedPOIds.length}
                         />
                         {appliedFilters.length > 0 && (
                           <Box height={'2vh'} sx={{ mb: 2 }}>
@@ -632,8 +750,8 @@ const PurchaseOrders: React.FC = () => {
               </Box>
               <Box sx={{ height: '2vh', display: 'flex', justifyContent: 'center', mt: 1 }}>
                 <Pagination
-                  count={Math.ceil(rowCount / pageSize)}
-                  page={page + 1}
+                  count={displayPageCount}
+                  page={displayPage}
                   onChange={(_, value) => setPage(value - 1)}
                   color="primary"
                   size="small"
