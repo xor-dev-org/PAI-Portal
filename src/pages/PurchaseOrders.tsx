@@ -59,7 +59,10 @@ const PurchaseOrders: React.FC = () => {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('delivery_date_desc');
+  // const [sortBy, setSortBy] = useState('');
+  // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortModel, setSortModel] = useState<{sort_by: string | undefined, sort_order: 'asc' | 'desc'}>({sort_by: '', sort_order: 'desc'});
+
   const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
   const [rowCount, setRowCount] = useState(0);
   const debouncedSearchQuery = useDebounce(searchQuery, 600);
@@ -94,11 +97,14 @@ const PurchaseOrders: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      console.log('Fetching purchase orders with sort model:', sortModel);
+
       const filters: POFiltersType = {
         page: page + 1,
         page_size: pageSize,
         status: statusFilter,
-        sort_by: sortOrder as 'delivery_date_asc' | 'delivery_date_desc',
+        sort_by: sortModel.sort_by,
+        sort_order: sortModel.sort_order,
         search: debouncedSearchQuery,
         ...advanceFilters,
       };
@@ -136,7 +142,7 @@ const PurchaseOrders: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, statusFilter, sortOrder, debouncedSearchQuery, user, advanceFilters]);
+  }, [page, pageSize, statusFilter, sortModel, debouncedSearchQuery, user, advanceFilters]);
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -356,6 +362,7 @@ const PurchaseOrders: React.FC = () => {
             size="small"
           />
         ),
+        
       },
       {
         field: 'total_value',
@@ -441,6 +448,19 @@ const PurchaseOrders: React.FC = () => {
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               hideFooterSelectedRowCount
+              sortingMode="server"
+              onSortModelChange={(model) => {
+                console.log('sort model: ', model);
+                console.log('sort model state: ', sortModel);
+                setSortModel({
+                  sort_by: model[0]?.field,
+                  // sort_order: (sortModel.sort_order == 'asc' || sortModel.sort_order == 'desc') ? sortModel.sort_order : 'asc',
+                  sort_order: (sortModel.sort_order == 'asc') ? 'desc': 'asc',
+                });
+                // setSortBy(model[0]?.field || '');
+                // setSortOrder(model[0]?.sort as 'asc' | 'desc' || 'asc');
+                setPage(0);
+              }}
               onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
               sx={{
                 '& .MuiDataGrid-row': {
@@ -467,11 +487,11 @@ const PurchaseOrders: React.FC = () => {
                         setStatusFilter(value);
                         setPage(0);
                       }}
-                      sortOrder={sortOrder}
-                      onSortChange={(value) => {
-                        setSortOrder(value);
-                        setPage(0);
-                      }}
+                      sortOrder={sortModel.sort_order}
+                      // onSortChange={(value) => {                       
+                      //   setSortOrder(value);
+                      //   setPage(0);
+                      // }}
                       viewMode={viewMode}
                       onViewModeChange={setViewMode}
                       onFiltersClick={() => setShowAdvancedFilters(true)}

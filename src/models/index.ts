@@ -86,7 +86,8 @@ export interface POFilters {
   supplier_id?: string;
   procurement_specialist_id?: string;
   search?: string;
-  sort_by?: 'delivery_date_asc' | 'delivery_date_desc';
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
 
   po_number?: string;
   supplier_name?: string;

@@ -15,6 +15,7 @@ export const purchaseOrderService = {
       params.append('procurement_specialist_id', filters.procurement_specialist_id);
     if (filters.search) params.append('search', filters.search);
     if (filters.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters.sort_order) params.append('sort_order', filters.sort_order);
     if (filters.po_number) params.append('po_number', filters.po_number);
     if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
     if (filters.total_value_from)

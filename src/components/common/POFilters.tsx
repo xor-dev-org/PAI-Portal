@@ -22,8 +22,8 @@ interface POFiltersProps {
   onSearchChange: (value: string) => void;
   statusFilter: string;
   onStatusChange: (value: string) => void;
-  sortOrder: string;
-  onSortChange: (value: string) => void;
+  sortOrder: 'asc' | 'desc';
+  onSortChange?: (value: string) => void;
   viewMode: 'grid' | 'list';
   onViewModeChange: (mode: 'grid' | 'list') => void;
   onFiltersClick: () => void;
