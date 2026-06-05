@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -44,7 +44,7 @@ import { logger } from '@/services/logger';
 
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
-//import { userService } from '@/api/services/userService';
+import { userService } from '@/api/services/userService';
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +61,10 @@ const PurchaseOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   // const [sortBy, setSortBy] = useState('');
   // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [sortModel, setSortModel] = useState<{sort_by: string | undefined, sort_order: 'asc' | 'desc'}>({sort_by: '', sort_order: 'desc'});
+  const [sortModel, setSortModel] = useState<{
+    sort_by: string | undefined;
+    sort_order: 'asc' | 'desc';
+  }>({ sort_by: '', sort_order: 'desc' });
 
   const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
   const [rowCount, setRowCount] = useState(0);
@@ -72,24 +75,149 @@ const PurchaseOrders: React.FC = () => {
   const [advanceFilters, setAdvancefilters] = useState<AdvanceFilters>({});
   const [advanceTempFilters, setAdvanceTempfilters] = useState<AdvanceFilters>({});
   // const advanceFiltersRef = useRef<AdvanceFilters>({});
-
+  const [pinnedPOIds, setPinnedPOIds] = useState<string[]>([]);
   // Pin functionality
-  const [pinnedPOIds, setPinnedPOIds] = useState<string[]>(() => {
-    const stored = localStorage.getItem('pinnedPOs');
-    return stored ? JSON.parse(stored) : [];
-  });
+  // const [pinnedPOIds, setPinnedPOIds] = useState<string[]>(() => {
+  //   const stored = localStorage.getItem('pinnedPOs');
+  //   return stored ? JSON.parse(stored) : [];
+  // });
   const [pinFilter, setPinFilter] = useState('all'); // 'all', 'pinned'
 
-  // Update localStorage when pinnedPOIds changes
-  useEffect(() => {
-    localStorage.setItem('pinnedPOs', JSON.stringify(pinnedPOIds));
-  }, [pinnedPOIds]);
+// Fetch pinnedPoIds (getPinnedPos)
+// set state variable pinnedPOIds
+// toggle row pin function 
+
+
+
+  // const [pinnedPOsDisplayed, setPinnedPOsDisplayed] = useState<PurchaseOrder[]>([]);
+
+  // // Update localStorage when pinnedPOIds changes
+  // useEffect(() => {
+  //   let mounted = true;
+  //   const loadPinned = async () => {
+  //     if (!user || !user.id) {
+  //       setPinnedPOIds([]);
+  //       return;
+  //     }
+
+  //     try {
+  //       // Try loading from backend first
+  //       const serverPinned = await userService.getPinnedRows(user.id);
+  //       if (mounted) {
+  //         setPinnedPOIds(serverPinned || []);
+  //         pinnedInitializedRef.current = true;
+  //       }
+  //     } catch (err) {
+  //       // Fallback to localStorage
+  //       try {
+  //         const key = `pinnedPOs:${user.id}`;
+  //         const stored = localStorage.getItem(key);
+  //         if (mounted) setPinnedPOIds(stored ? JSON.parse(stored) : []);
+  //         if (mounted) pinnedInitializedRef.current = true;
+  //       } catch (e) {
+  //         console.error('Error loading pinned POs from localStorage', e);
+  //         if (mounted) setPinnedPOIds([]);
+  //         if (mounted) pinnedInitializedRef.current = true;
+  //       }
+  //     }
+  //   };
+
+  //   loadPinned();
+
+  //   return () => {
+  //     mounted = false;
+  //   };
+  // }, [user]);
+
+  // Track whether we've loaded initial pinned IDs from server/local before persisting
+  // const pinnedInitializedRef = useRef(false);
+
+  // // Update per-user localStorage when pinnedPOIds changes
+  // useEffect(() => {
+  //   if (!user || !user.id) return;
+
+  //   const key = `pinnedPOs:${user.id}`;
+  //   try {
+  //     localStorage.setItem(key, JSON.stringify(pinnedPOIds));
+  //   } catch (err) {
+  //     console.error('Error saving pinned POs to localStorage', err);
+  //   }
+
+  //   // Don't persist to backend until we've finished the initial load to avoid overwriting
+  //   if (!pinnedInitializedRef.current) {
+  //     return;
+  //   }
+
+  //   // Persist to backend
+  //   (async () => {
+  //     try {
+  //       await userService.updatePinnedRows(user.id, pinnedPOIds);
+  //     } catch (err) {
+  //       console.error('Error updating pinned rows on server', err);
+  //     }
+  //   })();
+  // }, [pinnedPOIds, user]);
 
   const togglePin = useCallback((poId: string) => {
     setPinnedPOIds((prev) =>
       prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId]
     );
   }, []);
+
+  // When pinFilter is 'pinned', fetch full PO details for all pinned IDs so we can show them across pages
+  // useEffect(() => {
+  //   // let mounted = true;
+  //   const fetchPinned = async () => {
+  //     try {
+  //       // setLoading(true);
+  //       // if (pinFilter !== 'pinned') {
+  //       //   setPinnedPOsDisplayed([]);
+  //       //   return;
+  //       // }
+
+  //       // if (!pinnedPOIds || pinnedPOIds.length === 0) {
+  //       //   setPinnedPOsDisplayed([]);
+  //       //   return;
+  //       // }
+
+  //       const promises = pinnedPOIds.map((id) => purchaseOrderService.getPOById(id));
+  //       const results = await Promise.allSettled(promises);
+  //       const successful = results
+  //         .filter(
+  //           (result): result is PromiseFulfilledResult<PurchaseOrder> =>
+  //             result.status === 'fulfilled'
+  //         )
+  //         .map((result) => result.value);
+
+  //       // Only display pinned POs that are assigned to the current user
+  //       // const visible = successful.filter((po) => {
+  //       //   if (!user) return false;
+  //       //   if (user.role === 'SUPPLIER') return po.supplier_id === user.id;
+  //       //   if (user.role === 'PROCUREMENT_SPECIALIST')
+  //       //     return po.procurement_specialist_id === user.id;
+  //       //   return true;
+  //       // });
+
+  //       // if (mounted) {
+  //       // setPinnedPOsDisplayed(visible);
+  //       if (successful.length !== pinnedPOIds.length) {
+  //         setPinnedPOIds(successful.map((po) => po.id));
+  //       }
+  //       // }
+  //     } catch (err) {
+  //       console.error('Error fetching pinned POs:', err);
+  //       // if (mounted) setPinnedPOsDisplayed([]);
+  //     } finally {
+  //       // setLoading(false);
+  //     }
+  //   };
+
+  //   fetchPinned();
+
+  //   // return () => {
+  //   //   // mounted = false;
+  //   // };
+  // }, [pinFilter, pinnedPOIds, user]);
 
   const fetchPurchaseOrders = useCallback(async () => {
     const startTime = performance.now();
@@ -98,6 +226,8 @@ const PurchaseOrders: React.FC = () => {
       setError(null);
 
       console.log('Fetching purchase orders with sort model:', sortModel);
+      console.log('-----------pinnedOrNot:', pinFilter);
+      console.log('pinnedList:', pinnedPOIds);
 
       const filters: POFiltersType = {
         page: page + 1,
@@ -106,8 +236,11 @@ const PurchaseOrders: React.FC = () => {
         sort_by: sortModel.sort_by,
         sort_order: sortModel.sort_order,
         search: debouncedSearchQuery,
+        pinned_po_list: pinFilter === 'pinned' ? pinnedPOIds : [],
         ...advanceFilters,
       };
+
+      console.log('Final filters:', filters);
 
       logger.info('Fetching purchase orders', {
         page: filters.page,
@@ -242,6 +375,12 @@ const PurchaseOrders: React.FC = () => {
       return 0;
     });
   }, [purchaseOrders, pinnedPOIds, pinFilter]);
+  // const displayRows = pinFilter === 'pinned' ? pinnedPOsDisplayed : filteredAndSortedPOs;
+  // const displayRowCount = pinFilter === 'pinned' ? pinnedPOsDisplayed.length : rowCount;
+  const displayRows = filteredAndSortedPOs;
+  const displayRowCount = rowCount;
+  const displayPage = pinFilter === 'pinned' ? 1 : page + 1;
+  const displayPageCount = Math.max(1, Math.ceil(displayRowCount / pageSize));
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
     key: K,
     value: AdvanceFilters[K]
@@ -271,18 +410,19 @@ const PurchaseOrders: React.FC = () => {
   };
 
   const statusColors = React.useMemo(
-    () => ({
-      CREATED: 'default',
-      APPROVED: 'info',
-      SENT_TO_SUPPLIER: 'primary',
-      IN_TRANSIT: 'warning',
-      DELIVERED: 'success',
-      CANCELLED: 'error',
-      IN_PROGRESS: 'warning',
-    }) as Record<
-      PurchaseOrderStatus,
-      'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
-    >,
+    () =>
+      ({
+        CREATED: 'default',
+        APPROVED: 'info',
+        SENT_TO_SUPPLIER: 'primary',
+        IN_TRANSIT: 'warning',
+        DELIVERED: 'success',
+        CANCELLED: 'error',
+        IN_PROGRESS: 'warning',
+      }) as Record<
+        PurchaseOrderStatus,
+        'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
+      >,
     []
   );
 
@@ -362,7 +502,6 @@ const PurchaseOrders: React.FC = () => {
             size="small"
           />
         ),
-        
       },
       {
         field: 'total_value',
@@ -395,12 +534,14 @@ const PurchaseOrders: React.FC = () => {
         field: 'mrp_exceptions',
         headerName: 'MRP Exceptions',
         width: 150,
-        renderCell: (params) =>  <Chip
+        renderCell: (params) => (
+          <Chip
             variant="filled"
             label={params.value.replace(/_/g, ' ')}
             color={params.value === 'NONE' ? 'success' : 'error'}
             size="small"
-          />,
+          />
+        ),
       },
     ],
     [theme, pinnedPOIds, togglePin, statusColors]
@@ -430,9 +571,9 @@ const PurchaseOrders: React.FC = () => {
         <>
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
             <DataGrid
-              rows={filteredAndSortedPOs}
+              rows={displayRows}
               columns={columns}
-              rowCount={rowCount}
+              rowCount={displayRowCount}
               rowHeight={35}
               getRowClassName={(params) => {
                 // console.log('params: ', params);
@@ -455,7 +596,7 @@ const PurchaseOrders: React.FC = () => {
                 setSortModel({
                   sort_by: model[0]?.field,
                   // sort_order: (sortModel.sort_order == 'asc' || sortModel.sort_order == 'desc') ? sortModel.sort_order : 'asc',
-                  sort_order: (sortModel.sort_order == 'asc') ? 'desc': 'asc',
+                  sort_order: sortModel.sort_order == 'asc' ? 'desc' : 'asc',
                 });
                 // setSortBy(model[0]?.field || '');
                 // setSortOrder(model[0]?.sort as 'asc' | 'desc' || 'asc');
@@ -488,7 +629,7 @@ const PurchaseOrders: React.FC = () => {
                         setPage(0);
                       }}
                       sortOrder={sortModel.sort_order}
-                      // onSortChange={(value) => {                       
+                      // onSortChange={(value) => {
                       //   setSortOrder(value);
                       //   setPage(0);
                       // }}
@@ -500,6 +641,7 @@ const PurchaseOrders: React.FC = () => {
                         setPinFilter(value);
                         setPage(0);
                       }}
+                      pinnedCount={pinnedPOIds.length}
                     />
                     <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
                       {/* <Typography variant="subtitle2" color="text.secondary" sx={{ ml: 1 }}>

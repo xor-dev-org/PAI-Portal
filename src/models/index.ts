@@ -104,6 +104,7 @@ export interface POFilters {
   items_to?: number;
 
   mrp_exceptions?: string;
+  pinned_po_list?: string[];
 }
 
 export interface AdvanceFilters {
