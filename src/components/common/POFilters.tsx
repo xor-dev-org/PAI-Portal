@@ -25,6 +25,7 @@ import {
   GridToolbarQuickFilter,
 } from '@mui/x-data-grid';
 import { PushPin, PushPinOutlined } from '@mui/icons-material';
+import Badge from '@mui/material/Badge';
 
 interface POFiltersProps {
   searchQuery: string;
@@ -38,6 +39,7 @@ interface POFiltersProps {
   onFiltersClick: () => void;
   pinFilter: string;
   onPinFilterChange: (value: string) => void;
+  pinnedCount?: number;
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
@@ -52,6 +54,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   onFiltersClick,
   pinFilter,
   onPinFilterChange,
+  pinnedCount = 0,
 }) => {
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -69,10 +72,10 @@ const POFilters: React.FC<POFiltersProps> = ({
     { value: 'delivery_date_asc', label: 'Oldest First' },
   ];
 
-  const pinOptions = [
-    { value: 'all', label: 'All POs' },
-    { value: 'pinned', label: 'Pinned Only' },
-  ];
+  // const pinOptions = [
+  //   { value: 'all', label: 'All POs' },
+  //   { value: 'pinned', label: 'Pinned Only' },
+  // ];
 
   return (
     <Paper sx={{ p: 1, mb: 1, borderRadius: 0, boxShadow: 0 }}>
@@ -181,7 +184,9 @@ const POFilters: React.FC<POFiltersProps> = ({
               color="primary"
               sx={{fontSize: '0.8125rem'}}
             >
-              {pinFilter === 'pinned' ? <PushPin /> : <PushPinOutlined />}
+              <Badge badgeContent={pinnedCount || null} color="primary">
+                {pinFilter === 'pinned' ? <PushPin /> : <PushPinOutlined />}
+              </Badge>
               {/* <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
                 {pinFilter === 'pinned' ? 'Pinned Only' : 'All POs'}
               </Typography> */}
