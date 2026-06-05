@@ -350,6 +350,7 @@ const PurchaseOrders: React.FC = () => {
         width: 150,
         renderCell: (params) => (
           <Chip
+            variant="outlined"
             label={params.value.replace(/_/g, ' ')}
             color={statusColors[params.value as PurchaseOrderStatus]}
             size="small"
@@ -387,7 +388,12 @@ const PurchaseOrders: React.FC = () => {
         field: 'mrp_exceptions',
         headerName: 'MRP Exceptions',
         width: 150,
-        renderCell: (params) => params.value,
+        renderCell: (params) =>  <Chip
+            variant="filled"
+            label={params.value.replace(/_/g, ' ')}
+            color={params.value === 'NONE' ? 'success' : 'error'}
+            size="small"
+          />,
       },
     ],
     [theme, pinnedPOIds, togglePin, statusColors]

@@ -13,6 +13,7 @@ import {
   GridToolbarColumnsButton,
   GridToolbarDensitySelector,
   GridToolbarExport,
+  GridToolbarFilterButton,
 } from '@mui/x-data-grid';
 import { PushPin, PushPinOutlined } from '@mui/icons-material';
 
@@ -112,6 +113,7 @@ const POFilters: React.FC<POFiltersProps> = ({
           <GridToolbarDensitySelector slotProps={{ button: { sx: { minWidth: 40, px: 1, py: 0.5 } } }} />
           <GridToolbarColumnsButton slotProps={{ button: { sx: { minWidth: 40, px: 1, py: 0.5 } } }} />
           <GridToolbarExport slotProps={{ button: { sx: { minWidth: 40, px: 1, py: 0.5 } } }} />
+          <GridToolbarFilterButton />
           <Tooltip title="Advanced Filters">
             <IconButton onClick={onFiltersClick} color="primary" size="small">
               <FilterListIcon />

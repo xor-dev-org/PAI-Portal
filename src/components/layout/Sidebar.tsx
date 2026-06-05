@@ -126,9 +126,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
         ) : (
           <Box
             component="img"
-            src="/fls_logo.png"
+            src="/vite.svg"
             alt="Logo"
-            sx={{ width: 40, height: 40, objectFit: 'contain' }}
+            sx={{ width: 40, height: 40, objectFit: 'contain', p: 0.5 }}
           />
         )}
       </Toolbar>
@@ -171,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
                     minWidth: 0,
                     mr: collapsed ? 'auto' : 3,
                     justifyContent: 'center',
-                    color: 'inherit',
+                    color: isSelected ? theme.palette.primary.main : theme.palette.primary.main,
                   }}
                 >
                   {item.icon}
@@ -187,7 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
         <>
           <Divider />
           <Box
-            bgcolor={theme.palette.secondary.dark}
+            bgcolor={theme.palette.background.paper}
             sx={{ p: 1, display: 'flex', justifyContent: 'center' }}
           >
             <IconButton onClick={toggleCollapse}>
