@@ -6,6 +6,8 @@ import {
   Tooltip,
   Paper,
   InputAdornment,
+  Button,
+  Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -16,6 +18,8 @@ import {
   GridToolbarFilterButton,
 } from '@mui/x-data-grid';
 import { PushPin, PushPinOutlined } from '@mui/icons-material';
+import Badge from '@mui/material/Badge';
+import { PurchaseOrderStatus } from '@/models';
 
 interface POFiltersProps {
   searchQuery: string;
@@ -29,6 +33,7 @@ interface POFiltersProps {
   onFiltersClick: () => void;
   pinFilter: string;
   onPinFilterChange: (value: string) => void;
+  pinnedCount?: number;
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
@@ -43,7 +48,29 @@ const POFilters: React.FC<POFiltersProps> = ({
   onFiltersClick,
   pinFilter,
   onPinFilterChange,
+  pinnedCount = 0,
 }) => {
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: PurchaseOrderStatus.CREATED, label: 'Created' },
+    { value: PurchaseOrderStatus.IN_PROGRESS, label: 'In Progress' },
+    { value: PurchaseOrderStatus.APPROVED, label: 'Approved' },
+    { value: PurchaseOrderStatus.SENT_TO_SUPPLIER, label: 'Sent to Supplier' },
+    { value: PurchaseOrderStatus.IN_TRANSIT, label: 'In Transit' },
+    { value: PurchaseOrderStatus.DELIVERED, label: 'Delivered' },
+    { value: PurchaseOrderStatus.CANCELLED, label: 'Cancelled' },
+  ];
+
+  const sortOptions = [
+    { value: 'delivery_date_desc', label: 'Latest First' },
+    { value: 'delivery_date_asc', label: 'Oldest First' },
+  ];
+
+  // const pinOptions = [
+  //   { value: 'all', label: 'All POs' },
+  //   { value: 'pinned', label: 'Pinned Only' },
+  // ];
+
   return (
     <Paper sx={{ p: 1, mb: 0, borderRadius: 0, boxShadow: 0 }}>
       <Box
@@ -164,6 +191,38 @@ const POFilters: React.FC<POFiltersProps> = ({
           ))}
         </TextField> */}
 
+        <Box sx={{ display: 'flex', gap: 1, fontSize: '0.8125rem' }}>
+          <Tooltip title="Advanced Filters">
+            <Button onClick={onFiltersClick} color="primary">
+              <FilterListIcon />
+              <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
+                Filters
+              </Typography>
+            </Button>
+          </Tooltip>
+          <Tooltip title="Pinned Rows">
+            <Button
+              onClick={(e) => {
+                onPinFilterChange(pinFilter === 'pinned' ? 'all' : 'pinned');
+              }}
+              color="primary"
+              sx={{fontSize: '0.8125rem'}}
+            >
+              <Badge badgeContent={pinnedCount || null} color="primary">
+                {pinFilter === 'pinned' ? <PushPin /> : <PushPinOutlined />}
+              </Badge>
+              {/* <Typography marginLeft={1} variant="body2" fontWeight="medium" fontSize="0.8125rem">
+                {pinFilter === 'pinned' ? 'Pinned Only' : 'All POs'}
+              </Typography> */}
+            </Button>
+          </Tooltip>
+{/* 
+          <Tooltip title={viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}>
+            <IconButton onClick={() => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid')}>
+              {viewMode === 'grid' ? <ViewListIcon /> : <ViewModuleIcon />}
+            </IconButton>
+          </Tooltip> */}
+        </Box>
       </Box>
     </Paper>
   );
