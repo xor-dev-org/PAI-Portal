@@ -30,6 +30,9 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import DescriptionIcon from '@mui/icons-material/Description';
+import ChatWidget from '@/components/common/ChatWidget';
+import teamChatData from '../data/poChatData.json';
+import { Conversation } from '@/components/common/ChatWidget';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -78,6 +81,16 @@ const PurchaseOrderDetails: React.FC = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+  // Hide global chat when this specific details page mounts
+  window.dispatchEvent(new CustomEvent('hide-global-chat'));
+
+    // Bring it back when the user navigates away (unmounts)
+    return () => {
+      window.dispatchEvent(new CustomEvent('show-global-chat'));
+    };
+  }, []);
+
   const fetchPODetails = async () => {
     try {
       setLoading(true);
@@ -112,6 +125,10 @@ const PurchaseOrderDetails: React.FC = () => {
       </Box>
     );
   }
+
+  const filteredChatData = (teamChatData as Conversation[]).filter(
+    (conversation) => conversation.poNumber === po.po_number
+  );
 
   return (
     <Box>
@@ -369,6 +386,9 @@ const PurchaseOrderDetails: React.FC = () => {
           </Box>
         </TabPanel>
       </Paper>
+      <ChatWidget initialConversations={filteredChatData as Conversation[]} 
+        title={`Team Messages - ${po.po_number}`}
+        subtitle="Internal corporate communications"/>
     </Box>
   );
 };
