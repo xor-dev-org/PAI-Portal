@@ -58,7 +58,11 @@ const PurchaseOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Filter states
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [statusFilter, setStatusFilter] = useState('');
   // const [sortBy, setSortBy] = useState('');
   // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -250,8 +254,7 @@ const PurchaseOrders: React.FC = () => {
         status: statusFilter,
         sort_by: sortModel.sort_by,
         sort_order: sortModel.sort_order,
-        search: debouncedSearchQuery,
-        // pinned_po_list: pinFilter === 'pinned' ? pinnedPOIds : [],
+        search: searchQuery,
         ...advanceFilters,
       };
 
@@ -308,7 +311,16 @@ const PurchaseOrders: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, statusFilter, sortModel, debouncedSearchQuery, user, advanceFilters, pinFilter]);
+  }, [
+    page,
+    pageSize,
+    statusFilter,
+    sortModel,
+    debouncedSearchQuery,
+    user,
+    advanceFilters,
+    pinFilter,
+  ]);
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -383,37 +395,30 @@ const PurchaseOrders: React.FC = () => {
     }
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    setPage(0);
-  };
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
 
-  // Filter and sort purchase orders
-  // const filteredAndSortedPOs = React.useMemo(() => {
-  //   let filtered = [...purchaseOrders];
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
 
-  //   // Apply pin filter
-  //   if (pinFilter === 'pinned') {
-  //     filtered = filtered.filter((po) => pinnedPOIds.includes(po.id));
-  //   } else if (pinFilter === 'unpinned') {
-  //     filtered = filtered.filter((po) => !pinnedPOIds.includes(po.id));
-  //   }
+      searchDebounceRef.current = setTimeout(() => {
+        setSearchQuery(value);
+        setPage(0);
+      }, 1000);
+    },
+    [setPage]
+  );
 
-  //   // Sort: pinned items first
-  //   return filtered.sort((a, b) => {
-  //     const aPinned = pinnedPOIds.includes(a.id);
-  //     const bPinned = pinnedPOIds.includes(b.id);
-  //     if (aPinned && !bPinned) return -1;
-  //     if (!aPinned && bPinned) return 1;
-  //     return 0;
-  //   });
-  // }, [purchaseOrders, pinnedPOIds, pinFilter]);
-  // const displayRows = pinFilter === 'pinned' ? pinnedPOsDisplayed : filteredAndSortedPOs;
-  // const displayRowCount = pinFilter === 'pinned' ? pinnedPOsDisplayed.length : rowCount;
-  // const displayRows = filteredAndSortedPOs;
-  // const displayRowCount = rowCount;
-  // const displayPage = pinFilter === 'pinned' ? 1 : page + 1;
-  // const displayPageCount = Math.max(1, Math.ceil(displayRowCount / pageSize));
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
     key: K,
     value: AdvanceFilters[K]
@@ -496,7 +501,7 @@ const PurchaseOrders: React.FC = () => {
         field: 'po_number',
         headerName: 'PO Number',
         width: 150,
-        
+
         renderCell: (params) => (
           <Typography
             fontWeight="bold"
@@ -604,6 +609,7 @@ const PurchaseOrders: React.FC = () => {
       ) : (
         <>
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
+            
             <DataGrid
               rows={pinFilter === 'pinned' ? pinnedPOs : purchaseOrders}
               columns={columns}
@@ -653,71 +659,62 @@ const PurchaseOrders: React.FC = () => {
                   width: '100%',
                 },
               }}
-              slots={{
+               slots={{
                 toolbar: () => (
                   <>
-                    <POFilters
-                      searchQuery={searchQuery}
-                      onSearchChange={handleSearchChange}
-                      statusFilter={statusFilter}
-                      onStatusChange={(value) => {
-                        setStatusFilter(value);
-                        setPage(0);
-                      }}
-                      sortOrder={sortModel.sort_order}
-                      // onSortChange={(value) => {
-                      //   setSortOrder(value);
-                      //   setPage(0);
-                      // }}
-                      viewMode={viewMode}
-                      onViewModeChange={setViewMode}
-                      onFiltersClick={() => setShowAdvancedFilters(true)}
-                      pinFilter={pinFilter}
-                      onPinFilterChange={(value) => {
-                        console.log('Pin filter list:', pinnedPOs);
-                        setPinFilter(value);
-                        console.log('Pin filter changed to:', value);
-                        setPage(0);
-                      }}
-                      pinnedCount={pinnedPOIds.length}
-                    />
-                    <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
-                      {/* <Typography variant="subtitle2" color="text.secondary" sx={{ ml: 1 }}>
-                        {rowCount} purchase orders.
-                      </Typography> */}
-                      {appliedFilters.length > 0 && (
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          {appliedFilters.map((filter) => (
-                            <Chip
-                              key={filter.key}
-                              label={filter.label}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              onDelete={() => {
-                                const updated = { ...advanceFilters };
-                                delete updated[filter.key];
-                                setAdvancefilters(updated);
-                                setAdvanceTempfilters(updated);
-                              }}
-                            />
-                          ))}
-
-                          <Chip
-                            size="small"
-                            label="Clear All"
-                            color="error"
-                            onClick={() => {
-                              setAdvancefilters({});
-                              setAdvanceTempfilters({});
-                            }}
-                          />
-                        </Stack>
-                      )}
-                    </Box>
-                  </>
-                ),
+                  <POFilters
+              searchQuery={searchInput}
+              onSearchChange={handleSearchChange}
+              statusFilter={statusFilter}
+              onStatusChange={(value) => {
+                setStatusFilter(value);
+                setPage(0);
               }}
+              sortOrder={sortModel.sort_order}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onFiltersClick={() => setShowAdvancedFilters(true)}
+              pinFilter={pinFilter}
+              onPinFilterChange={(value) => {
+                console.log('Pin filter list:', pinnedPOs);
+                setPinFilter(value);
+                console.log('Pin filter changed to:', value);
+                setPage(0);
+              }}
+              pinnedCount={pinnedPOIds.length}
+            />
+            <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
+              {appliedFilters.length > 0 && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {appliedFilters.map((filter) => (
+                    <Chip
+                      key={filter.key}
+                      label={filter.label}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      onDelete={() => {
+                        const updated = { ...advanceFilters };
+                        delete updated[filter.key];
+                        setAdvancefilters(updated);
+                        setAdvanceTempfilters(updated);
+                      }}
+                    />
+                  ))}
+
+                  <Chip
+                    size="small"
+                    label="Clear All"
+                    color="error"
+                    onClick={() => {
+                      setAdvancefilters({});
+                      setAdvanceTempfilters({});
+                    }}
+                  />
+                </Stack>
+              )}
+            </Box>
+                  </>)}}
             />
           </Box>
         </>
