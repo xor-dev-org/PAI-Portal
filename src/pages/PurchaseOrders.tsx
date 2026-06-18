@@ -496,6 +496,7 @@ const PurchaseOrders: React.FC = () => {
         field: 'po_number',
         headerName: 'PO Number',
         width: 150,
+        
         renderCell: (params) => (
           <Typography
             fontWeight="bold"
@@ -550,7 +551,7 @@ const PurchaseOrders: React.FC = () => {
         field: 'delivery_date',
         headerName: 'Delivery Date',
         width: 150,
-        renderCell: (params) => format(new Date(params.value), 'MMM dd, yyyy'),
+        renderCell: (params) => format(new Date(params.value), 'MMM, dd yyyy'),
       },
       {
         field: 'source_system',
