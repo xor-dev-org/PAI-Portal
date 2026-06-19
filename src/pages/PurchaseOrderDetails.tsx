@@ -309,6 +309,10 @@ const PurchaseOrderDetails: React.FC = () => {
     );
   }
 
+  const filteredChatData = (teamChatData as Conversation[]).filter(
+    (conversation) => conversation.poNumber === po.po_number
+  );
+
   return (
     <Box sx={{ backgroundColor: poDetailsColors.pageBg, p: { xs: 1.5, md: 2 }, minHeight: '100%' }}>
       <Stack spacing={1.5}>
