@@ -20,6 +20,8 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
+  Tab,
+  Tabs,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +53,7 @@ const PurchaseOrders: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +97,8 @@ const PurchaseOrders: React.FC = () => {
       return updated;
     });
   };
+
+
 
   // useEffect(() => {
   //   if (user && user.id) {
@@ -526,6 +531,7 @@ const PurchaseOrders: React.FC = () => {
     return <LoadingSpinner message="Loading purchase orders..." />;
   }
 
+
   return (
     <Box>
       <Typography variant="h5" gutterBottom fontWeight="bold">
@@ -545,16 +551,15 @@ const PurchaseOrders: React.FC = () => {
       ) : (
         <>
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
-            
             <DataGrid
               rows={pinFilter === 'pinned' ? pinnedPOs : purchaseOrders}
               columns={columns}
               rowCount={pinFilter === 'pinned' ? pinnedPOsRowCount : rowCount}
               rowHeight={35}
-              getRowClassName={(params) => {
-                // console.log('params: ', params);
-                return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
-              }}
+              // getRowClassName={(params) => {
+              //   // console.log('params: ', params);
+              //   return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
+              // }}
               pagination
               paginationMode="server"
               // rowCountMode="server"
@@ -585,7 +590,7 @@ const PurchaseOrders: React.FC = () => {
                 '& .MuiDataGrid-row': {
                   cursor: 'pointer',
                   '&:hover': {
-                    bgcolor: 'action.hover',
+                    backgroundColor: '#F8EFE7',
                   },
                   fontSize: '0.8rem',
                 },
@@ -595,62 +600,66 @@ const PurchaseOrders: React.FC = () => {
                   width: '100%',
                 },
               }}
-               slots={{
+              slots={{
                 toolbar: () => (
                   <>
-                  <POFilters
-              searchQuery={searchInput}
-              onSearchChange={handleSearchChange}
-              statusFilter={statusFilter}
-              onStatusChange={(value) => {
-                setStatusFilter(value);
-                setPage(0);
-              }}
-              sortOrder={sortModel.sort_order}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              onFiltersClick={() => setShowAdvancedFilters(true)}
-              pinFilter={pinFilter}
-              onPinFilterChange={(value) => {
-                console.log('Pin filter list:', pinnedPOs);
-                setPinFilter(value);
-                console.log('Pin filter changed to:', value);
-                setPage(0);
-              }}
-              pinnedCount={pinnedPOIds.length}
-            />
-            <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
-              {appliedFilters.length > 0 && (
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {appliedFilters.map((filter) => (
-                    <Chip
-                      key={filter.key}
-                      label={filter.label}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                      onDelete={() => {
-                        const updated = { ...advanceFilters };
-                        delete updated[filter.key];
-                        setAdvancefilters(updated);
-                        setAdvanceTempfilters(updated);
+                    <POFilters
+                      searchQuery={searchInput}
+                      onSearchChange={handleSearchChange}
+                      statusFilter={statusFilter}
+                      onStatusChange={(value) => {
+                        setStatusFilter(value);
+                        setPage(0);
                       }}
+                      sortOrder={sortModel.sort_order}
+                      viewMode={viewMode}
+                      onViewModeChange={setViewMode}
+                      onFiltersClick={() => setShowAdvancedFilters(true)}
+                      pinFilter={pinFilter}
+                      onPinFilterChange={(value) => {
+                        console.log('Pin filter list:', pinnedPOs);
+                        setPinFilter(value);
+                        console.log('Pin filter changed to:', value);
+                        setPage(0);
+                      }}
+                      pinnedCount={pinnedPOIds.length}
+                      selectedTab={selectedTab}
+                      onTabChange={setSelectedTab}
                     />
-                  ))}
+                    <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
+                      {appliedFilters.length > 0 && (
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          {appliedFilters.map((filter) => (
+                            <Chip
+                              key={filter.key}
+                              label={filter.label}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              onDelete={() => {
+                                const updated = { ...advanceFilters };
+                                delete updated[filter.key];
+                                setAdvancefilters(updated);
+                                setAdvanceTempfilters(updated);
+                              }}
+                            />
+                          ))}
 
-                  <Chip
-                    size="small"
-                    label="Clear All"
-                    color="error"
-                    onClick={() => {
-                      setAdvancefilters({});
-                      setAdvanceTempfilters({});
-                    }}
-                  />
-                </Stack>
-              )}
-            </Box>
-                  </>)}}
+                          <Chip
+                            size="small"
+                            label="Clear All"
+                            color="error"
+                            onClick={() => {
+                              setAdvancefilters({});
+                              setAdvanceTempfilters({});
+                            }}
+                          />
+                        </Stack>
+                      )}
+                    </Box>
+                  </>
+                ),
+              }}
             />
           </Box>
         </>
