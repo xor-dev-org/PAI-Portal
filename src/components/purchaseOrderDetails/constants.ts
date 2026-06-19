@@ -1,0 +1,15 @@
+export const poDetailsColors = {
+  pageBg: '#ffffff',
+  paperBg: '#ffffff',
+  border: '#d9d9d9',
+  divider: '#d6d6d6',
+  textPrimary: '#1f1f1f',
+  textSecondary: '#6f6f6f',
+  primaryBlue: '#005a8d',
+  darkBlue: '#004b7c',
+  lightBlueBg: '#e7f3fa',
+  netValuePill: '#d8ecf7',
+  datePill: '#fde5e8',
+  dateRed: '#e65b5b',
+  warningOrange: '#ff7043',
+};

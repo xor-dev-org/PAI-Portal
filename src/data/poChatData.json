@@ -1,0 +1,50 @@
+[
+  {
+    "id": 101,
+    "name": "Rajesh Kumar",
+    "role": "Sales Manager - Steel Corp Ltd.",
+    "avatar": "RK",
+    "poNumber": "PO-10628",
+    "lastMessage": "Will do. Also, the quality certificates will be attached with the shipment.",
+    "lastTime": "10:20 AM",
+    "unread": 0,
+    "messages": [
+      { "id": 1, "sender": "other", "text": "Hello! I've received PO-10628. We'll begin processing immediately.", "time": "10:00 AM" },
+      { "id": 2, "sender": "me", "text": "Great. Can you confirm the delivery timeline?", "time": "10:05 AM" },
+      { "id": 3, "sender": "other", "text": "Expected dispatch by June 20. Delivery within 3 business days after.", "time": "10:12 AM" },
+      { "id": 4, "sender": "me", "text": "Perfect. Please share tracking details once dispatched.", "time": "10:15 AM" },
+      { "id": 5, "sender": "other", "text": "Will do. Also, the quality certificates will be attached with the shipment.", "time": "10:20 AM" }
+    ]
+  },
+  {
+    "id": 102,
+    "name": "Maria Santos",
+    "role": "Account Executive - PackPro Industries",
+    "avatar": "MS",
+    "poNumber": "PO-10121",
+    "lastMessage": "Let's go with partial delivery. Ship what's available.",
+    "lastTime": "2:45 PM",
+    "unread": 0,
+    "messages": [
+      { "id": 1, "sender": "other", "text": "Hi, regarding PO-10121 — we have a stock issue on item #3.", "time": "2:30 PM" },
+      { "id": 2, "sender": "me", "text": "What's the expected delay?", "time": "2:35 PM" },
+      { "id": 3, "sender": "other", "text": "Approximately 5 days. We can ship the rest now if you'd like partial delivery.", "time": "2:40 PM" },
+      { "id": 4, "sender": "me", "text": "Let's go with partial delivery. Ship what's available.", "time": "2:45 PM" }
+    ]
+  },
+  {
+    "id": 103,
+    "name": "James Wilson",
+    "role": "Logistics Head - Global Supplies Inc.",
+    "avatar": "JW",
+    "poNumber": "PO-10843",
+    "lastMessage": "Absolutely. We use reinforced packaging for all delicate materials.",
+    "lastTime": "11:15 AM",
+    "unread": 0,
+    "messages": [
+      { "id": 1, "sender": "other", "text": "PO-10843 acknowledged. All items are in stock.", "time": "11:00 AM" },
+      { "id": 2, "sender": "me", "text": "Excellent. Please ensure proper packaging for fragile items.", "time": "11:10 AM" },
+      { "id": 3, "sender": "other", "text": "Absolutely. We use reinforced packaging for all delicate materials.", "time": "11:15 AM" }
+    ]
+  }
+]

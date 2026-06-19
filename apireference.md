@@ -698,3 +698,15 @@ MSAL Login
 → PO Reassignment
 → Audit Views
 ```
+
+---
+
+# Chat API Reference
+
+Detailed chat service API reference is available at:
+
+- `../bebackup/docs/chat-api-reference.md`
+
+Frontend implementation guide for chat is available at:
+
+- `../bebackup/docs/frontend-chat-changes.md`

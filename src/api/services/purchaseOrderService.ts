@@ -1,5 +1,12 @@
 import apiClient from '../axios';
-import { PurchaseOrder, POListResponse, POFilters } from '@/models';
+import { logger } from '@/services/logger';
+import {
+  POActionRequest,
+  PODropdownConfig,
+  POFilters,
+  POListResponse,
+  PurchaseOrder,
+} from '@/models';
 
 export const purchaseOrderService = {
   // Get PO list with filters and pagination
@@ -14,6 +21,7 @@ export const purchaseOrderService = {
       params.append('procurement_specialist_id', filters.procurement_specialist_id);
     if (filters.search) params.append('search', filters.search);
     if (filters.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters.sort_order) params.append('sort_order', filters.sort_order);
     if (filters.po_number) params.append('po_number', filters.po_number);
     if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
     if (filters.total_value_from)
@@ -25,11 +33,34 @@ export const purchaseOrderService = {
     if (filters.mrp_exceptions) params.append('mrp_exceptions', filters.mrp_exceptions);
     if (filters.delivery_date_from) params.append('delivery_date_from', filters.delivery_date_from);
     if (filters.delivery_date_to) params.append('delivery_date_to', filters.delivery_date_to);
+    if (filters.pinned_po_list) params.append('pinned_po_list', filters.pinned_po_list.join(','));
 
-    const response = await apiClient.get<POListResponse>(`/po?${params.toString()}`);
+    const url = `/po?${params.toString()}`;
+    const startTime = performance.now();
+    const response = await apiClient.get<POListResponse>(url);
+    logger.info('Purchase order API call completed', {
+      url,
+      durationMs: Math.round(performance.now() - startTime),
+    });
     return response.data;
   },
 
+  // Get Pinned PO List for a user
+  getPinnedPOList: async (userId: string, filters: POFilters = {}): Promise<POListResponse> => {
+    const params = new URLSearchParams();
+
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.page_size) params.append('page_size', filters.page_size.toString());
+
+    const url = `/po/pinned_po_list?user_id=${userId}&${params.toString()}`;
+    const startTime = performance.now();
+    const response = await apiClient.get<POListResponse>(url);
+    logger.info('Purchase order API call completed', {
+      url,
+      durationMs: Math.round(performance.now() - startTime),
+    });
+    return response.data;
+  },
   // Get PO by ID
   getPOById: async (poId: string): Promise<PurchaseOrder> => {
     const response = await apiClient.get<PurchaseOrder>(`/po/${poId}`);
@@ -45,6 +76,16 @@ export const purchaseOrderService = {
   // Update PO
   updatePO: async (poId: string, poData: Partial<PurchaseOrder>): Promise<PurchaseOrder> => {
     const response = await apiClient.put<PurchaseOrder>(`/po/${poId}`, poData);
+    return response.data;
+  },
+
+  performPOAction: async (poId: string, payload: POActionRequest): Promise<PurchaseOrder> => {
+    const response = await apiClient.post<PurchaseOrder>(`/po/${poId}/actions`, payload);
+    return response.data;
+  },
+
+  getPODropdownConfig: async (): Promise<PODropdownConfig> => {
+    const response = await apiClient.get<PODropdownConfig>('/po/config/dropdowns');
     return response.data;
   },
 };

@@ -2,8 +2,8 @@ import { createTheme, ThemeOptions } from '@mui/material/styles';
 
 const brandColors = {
   primary: {
-    main: '#0B1F3A',
-    light: '#1F3A5F',
+    main: '#054F7D',
+    light: '#4d668a',
     dark: '#071426',
     contrastText: '#FFFFFF',
   },

@@ -1,374 +1,463 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  IconButton,
-  Paper,
-  Grid,
-  Chip,
-  Tabs,
-  Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Alert,
-  Divider,
-  Card,
-  CardContent,
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
-import { PurchaseOrder, PurchaseOrderStatus } from '@/models';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { format } from 'date-fns';
-import BusinessIcon from '@mui/icons-material/Business';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import DescriptionIcon from '@mui/icons-material/Description';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`po-tabpanel-${index}`}
-      aria-labelledby={`po-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
-const statusColors: Record<PurchaseOrderStatus, 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'> = {
-  CREATED: 'default',
-  APPROVED: 'info',
-  SENT_TO_SUPPLIER: 'primary',
-  IN_TRANSIT: 'warning',
-  DELIVERED: 'success',
-  CANCELLED: 'error',
-  IN_PROGRESS: 'default'
-};
+import { LineItem, POActionRequest, PurchaseOrder } from '@/models';
+import ChatWidget from '@/components/common/ChatWidget';
+import teamChatData from '../data/poChatData.json';
+import { Conversation } from '@/components/common/ChatWidget';
+import {
+  LineItemActionsMenu,
+  LineItemCard,
+  LineItemsToolbar,
+  LineStatusTabs,
+  MainTabs,
+  MoveDateDialog,
+  PoDetailsPanel,
+  PSBottomSummaryBar,
+  RevisionDialog,
+  SupplierBottomActionBar,
+  SupplierTotalRow,
+  TopHeader,
+} from '@/components/purchaseOrderDetails';
+import { poDetailsColors } from '@/components/purchaseOrderDetails/constants';
+import { doesLineStatusMatchTab, formatActionLabel, formatLineId } from '@/components/purchaseOrderDetails/helpers';
+import { useAuth } from '@/hooks/useAuth';
 
 const PurchaseOrderDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [po, setPO] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeMainTab, setActiveMainTab] = useState(0);
+  const [activeLineStatusTab, setActiveLineStatusTab] = useState(0);
+  const [viewMode, setViewMode] = useState<'GRID' | 'CARD'>('CARD');
+  const [poPanelExpanded, setPoPanelExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const [activeActionLineId, setActiveActionLineId] = useState<string | null>(null);
+  const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
+  const [revisionFullscreen, setRevisionFullscreen] = useState(false);
+  const [revisionNotes, setRevisionNotes] = useState('');
+  const [moveDateDialogOpen, setMoveDateDialogOpen] = useState(false);
+  const [moveDateAction, setMoveDateAction] = useState<'MOVE_IN' | 'MOVE_OUT' | null>(null);
+  const [moveDateValue, setMoveDateValue] = useState('');
+  const [moveDateNotes, setMoveDateNotes] = useState('');
+  const [moveDateFullscreen, setMoveDateFullscreen] = useState(false);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
-  useEffect(() => {
-    if (id) {
-      fetchPODetails();
+  const fetchPODetails = useCallback(async () => {
+    if (!id) {
+      return;
     }
-  }, [id]);
 
-  const fetchPODetails = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await purchaseOrderService.getPOById(id!);
+      const data = await purchaseOrderService.getPOById(id);
       setPO(data);
+
+      const expandedDefaults: Record<string, boolean> = {};
+      const selectedDefaults: Record<string, boolean> = {};
+      data.line_items.forEach((lineItem) => {
+        const lineId = lineItem.id || formatLineId(lineItem.line_number);
+        expandedDefaults[lineId] = Boolean(lineItem.default_expanded);
+        selectedDefaults[lineId] = false;
+      });
+
+      setExpandedRows(expandedDefaults);
+      setSelectedRows(selectedDefaults);
+
+      if (data.ui_config?.header_actions?.includes('GRID')) {
+        setViewMode('CARD');
+      }
     } catch (err: any) {
       console.error('Error fetching PO details:', err);
       setError(err.response?.data?.detail || 'Failed to load purchase order details');
     } finally {
       setLoading(false);
     }
+  }, [id]);
+
+  useEffect(() => {
+    void fetchPODetails();
+  }, [fetchPODetails]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('hide-global-chat'));
+
+    return () => {
+      window.dispatchEvent(new CustomEvent('show-global-chat'));
+    };
+  }, []);
+
+  const uiConfig = po?.ui_config;
+  const mainTabs = uiConfig?.main_tabs || ['PO DETAILS'];
+  const lineStatusTabs = uiConfig?.line_status_tabs || ['ALL'];
+  const lineActions = uiConfig?.line_actions || po?.available_actions || [];
+  const role = user?.role || '';
+  const selectedLineStatus = lineStatusTabs[activeLineStatusTab] || 'ALL';
+
+  const filteredChatData = useMemo(
+    () =>
+      (teamChatData as Conversation[]).filter(
+        (conversation) => conversation.poNumber === (po?.po_number || '')
+      ),
+    [po?.po_number]
+  );
+
+  const visibleLineItems = useMemo(() => {
+    const lineItems = po?.line_items || [];
+    const normalizedQuery = deferredSearchQuery.trim().toLowerCase();
+
+    return lineItems.filter((lineItem) => {
+      const lineId = lineItem.id || formatLineId(lineItem.line_number);
+      const searchable = `${lineId} ${lineItem.material_code} ${lineItem.description}`.toLowerCase();
+      const matchesSearch = !normalizedQuery || searchable.includes(normalizedQuery);
+      const matchesStatus = doesLineStatusMatchTab(selectedLineStatus, lineItem.line_status || 'ALL');
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [deferredSearchQuery, po?.line_items, selectedLineStatus]);
+
+  const selectedActionLine: LineItem | undefined = useMemo(
+    () =>
+      (po?.line_items || []).find((lineItem) => {
+        const lineId = lineItem.id || formatLineId(lineItem.line_number);
+        return lineId === activeActionLineId;
+      }),
+    [activeActionLineId, po?.line_items]
+  );
+
+  const selectedCount = Object.values(selectedRows).filter(Boolean).length;
+
+  const closeMenu = () => {
+    setMenuAnchorEl(null);
   };
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+  const handleSearchChange = useCallback((value: string) => {
+    startTransition(() => {
+      setSearchQuery(value);
+    });
+  }, []);
+
+  const handleToggleSelectAll = useCallback(
+    (checked: boolean) => {
+      setSelectedRows((prev) => {
+        const nextState = { ...prev };
+        visibleLineItems.forEach((lineItem) => {
+          const lineId = lineItem.id || formatLineId(lineItem.line_number);
+          nextState[lineId] = checked;
+        });
+        return nextState;
+      });
+    },
+    [visibleLineItems]
+  );
+
+  const handleToggleExpanded = useCallback((lineId: string) => {
+    setExpandedRows((prev) => ({ ...prev, [lineId]: !prev[lineId] }));
+  }, []);
+
+  const handleToggleSelected = useCallback((lineId: string, checked: boolean) => {
+    setSelectedRows((prev) => ({
+      ...prev,
+      [lineId]: checked,
+    }));
+  }, []);
+
+  const handleOpenLineItemMenu = useCallback((target: HTMLElement, lineId: string) => {
+    setMenuAnchorEl(target);
+    setActiveActionLineId(lineId);
+  }, []);
+
+  const applyAction = async (action: string, lineItem: LineItem, payloadOverrides?: Partial<POActionRequest>) => {
+    if (!id) {
+      return;
+    }
+
+    const lineItemId = lineItem.id || formatLineId(lineItem.line_number);
+    const updated = await purchaseOrderService.performPOAction(id, {
+      action,
+      line_item_id: lineItemId,
+      notes: payloadOverrides?.notes,
+      move_in_date: payloadOverrides?.move_in_date,
+      move_out_date: payloadOverrides?.move_out_date,
+    });
+    setPO(updated);
+  };
+
+  const handleMenuAction = async (action: string) => {
+    if (!selectedActionLine) {
+      closeMenu();
+      return;
+    }
+
+    if (action === 'MAKE_REVISION') {
+      setRevisionDialogOpen(true);
+      closeMenu();
+      return;
+    }
+
+    if (action === 'MOVE_IN' || action === 'MOVE_OUT') {
+      setMoveDateAction(action);
+      setMoveDateValue(
+        action === 'MOVE_IN'
+          ? selectedActionLine.required_in_house_date || ''
+          : selectedActionLine.shipment_date || ''
+      );
+      setMoveDateNotes('');
+      setMoveDateDialogOpen(true);
+      closeMenu();
+      return;
+    }
+
+    try {
+      await applyAction(action, selectedActionLine);
+      setActiveActionLineId(null);
+      closeMenu();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || `Failed to run ${formatActionLabel(action)} action`);
+      closeMenu();
+    }
+  };
+
+  const handleSubmitRevision = async () => {
+    if (!selectedActionLine) {
+      setRevisionDialogOpen(false);
+      return;
+    }
+
+    try {
+      await applyAction('MAKE_REVISION', selectedActionLine, { notes: revisionNotes });
+      setRevisionDialogOpen(false);
+      setRevisionNotes('');
+      setActiveActionLineId(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to submit revision request');
+    }
+  };
+
+  const handleSubmitMoveDate = async () => {
+    if (!selectedActionLine || !moveDateAction || !moveDateValue) {
+      setMoveDateDialogOpen(false);
+      return;
+    }
+
+    try {
+      const payloadOverrides: Partial<POActionRequest> = {
+        notes: moveDateNotes,
+      };
+
+      if (moveDateAction === 'MOVE_IN') {
+        payloadOverrides.move_in_date = moveDateValue;
+      } else {
+        payloadOverrides.move_out_date = moveDateValue;
+      }
+
+      await applyAction(moveDateAction, selectedActionLine, payloadOverrides);
+      setMoveDateDialogOpen(false);
+      setMoveDateAction(null);
+      setMoveDateValue('');
+      setMoveDateNotes('');
+      setActiveActionLineId(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || `Failed to update ${formatActionLabel(moveDateAction)} date`);
+    }
+  };
+
+  const handleSupplierAccept = async () => {
+    if (!po) {
+      return;
+    }
+
+    const selectedLine = po.line_items.find((lineItem) => {
+      const lineId = lineItem.id || formatLineId(lineItem.line_number);
+      return selectedRows[lineId];
+    }) || po.line_items[0];
+
+    if (!selectedLine) {
+      return;
+    }
+
+    try {
+      await applyAction('ACCEPT', selectedLine);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to accept line item');
+    }
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading purchase order details..." />;
+    return (
+      <Stack direction="row" spacing={1} alignItems="center">
+        <CircularProgress size={20} />
+        <Typography variant="body2">Loading purchase order details...</Typography>
+      </Stack>
+    );
   }
 
   if (error || !po) {
     return (
       <Box>
         <Alert severity="error">{error || 'Purchase order not found'}</Alert>
-        <Box sx={{ mt: 2 }}>
-          <IconButton onClick={() => navigate('/purchase-orders')}>
-            <ArrowBackIcon />
-          </IconButton>
-        </Box>
       </Box>
     );
   }
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={() => navigate('/purchase-orders')} sx={{ mr: 2 }}>
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h4" fontWeight="bold" sx={{ flexGrow: 1 }}>
-          Purchase Order: {po.po_number}
-        </Typography>
-        <Chip 
-          label={po.status.replace(/_/g, ' ')} 
-          color={statusColors[po.status]}
-          size="medium"
+    <Box sx={{ backgroundColor: poDetailsColors.pageBg, p: { xs: 1.5, md: 2 }, minHeight: '100%' }}>
+      <Stack spacing={1.5}>
+        <TopHeader
+          poNumber={po.po_number}
+          status={po.status}
+          headerActions={uiConfig?.header_actions || ['EXPORT']}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          onBack={() => navigate('/purchase-orders')}
         />
-      </Box>
 
-      {/* Tabs */}
-      <Paper>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          aria-label="PO details tabs"
-          variant="scrollable"
-          scrollButtons="auto"
+        {error && <Alert severity="error">{error}</Alert>}
+
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            borderColor: poDetailsColors.border,
+            boxShadow: '0 2px 8px rgba(15,23,42,0.08)',
+            backgroundColor: poDetailsColors.paperBg,
+          }}
         >
-          <Tab label="PO Details" />
-          <Tab label="MRP Exceptions" />
-          <Tab label="Shipment & Tracking" />
-          <Tab label="Documents" />
-          <Tab label="Revision History" />
-        </Tabs>
+          <MainTabs tabs={mainTabs} activeTab={activeMainTab} onChange={setActiveMainTab} />
 
-        {/* Tab: PO Details */}
-        <TabPanel value={activeTab} index={0}>
-          <Box sx={{ px: 3 }}>
-            {/* Summary Cards */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <BusinessIcon color="primary" sx={{ mr: 1 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Supplier
-                      </Typography>
-                    </Box>
-                    <Typography variant="h6" fontWeight="bold">
-                      {po.supplier_name}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+          {activeMainTab === 0 ? (
+            <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+              <PoDetailsPanel
+                expanded={poPanelExpanded}
+                details={po.po_details}
+                onToggle={() => setPoPanelExpanded((prev) => !prev)}
+              />
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <AttachMoneyIcon color="primary" sx={{ mr: 1 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Total Value
-                      </Typography>
-                    </Box>
-                    <Typography variant="h6" fontWeight="bold">
-                      {po.currency} {po.total_value.toLocaleString()}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+              <Stack
+                direction={{ xs: 'column', lg: 'row' }}
+                justifyContent="space-between"
+                alignItems={{ xs: 'flex-start', lg: 'center' }}
+                spacing={1}
+              >
+                <LineStatusTabs
+                  tabs={lineStatusTabs}
+                  activeTab={activeLineStatusTab}
+                  onChange={setActiveLineStatusTab}
+                />
+                <LineItemsToolbar
+                  selectAll={visibleLineItems.length > 0 && selectedCount === visibleLineItems.length}
+                  searchQuery={searchQuery}
+                  onSearchChange={handleSearchChange}
+                  onToggleSelectAll={handleToggleSelectAll}
+                />
+              </Stack>
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <CalendarTodayIcon color="primary" sx={{ mr: 1 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Delivery Date
-                      </Typography>
-                    </Box>
-                    <Typography variant="h6" fontWeight="bold">
-                      {format(new Date(po.delivery_date), 'MMM dd, yyyy')}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+              <Box sx={{ overflowX: 'auto' }}>
+                {visibleLineItems.map((lineItem) => {
+                  const lineId = lineItem.id || formatLineId(lineItem.line_number);
+                  return (
+                    <LineItemCard
+                      key={lineId}
+                      role={role}
+                      lineItem={lineItem}
+                      expanded={Boolean(expandedRows[lineId])}
+                      selected={Boolean(selectedRows[lineId])}
+                      onToggleExpanded={handleToggleExpanded}
+                      onToggleSelected={handleToggleSelected}
+                      onOpenMenu={handleOpenLineItemMenu}
+                    />
+                  );
+                })}
+                {visibleLineItems.length === 0 ? (
+                  <Alert severity="info">No line items match the selected status and search filters.</Alert>
+                ) : null}
+              </Box>
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <LocalShippingIcon color="primary" sx={{ mr: 1 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Line Items
-                      </Typography>
-                    </Box>
-                    <Typography variant="h6" fontWeight="bold">
-                      {po.line_items.length}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+              {uiConfig?.layout?.show_supplier_total_row ? (
+                <SupplierTotalRow totalValue={po.total_value} currency={po.currency} />
+              ) : null}
 
-            {/* Detailed Information */}
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Order Information
-            </Typography>
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  PO Number
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {po.po_number}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Source System
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {po.source_system}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Created Date
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {format(new Date(po.created_date), 'MMM dd, yyyy')}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Payment Terms
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {po.payment_terms}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Currency
-                </Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {po.currency}
-                </Typography>
-              </Grid>
-            </Grid>
+              {uiConfig?.layout?.show_ps_bottom_summary ? (
+                <PSBottomSummaryBar
+                  totalValue={po.total_value}
+                  currency={po.currency}
+                  onCancel={() => navigate('/purchase-orders')}
+                />
+              ) : null}
+            </Stack>
+          ) : (
+            <Box sx={{ pt: 2 }}>
+              <Alert severity="info">{mainTabs[activeMainTab]} view layout is ready for API content integration.</Alert>
+            </Box>
+          )}
+        </Paper>
 
-            <Divider sx={{ my: 3 }} />
+        {uiConfig?.layout?.show_bottom_page_action_bar ? (
+          <SupplierBottomActionBar onBack={() => navigate('/purchase-orders')} onAccept={handleSupplierAccept} />
+        ) : null}
+      </Stack>
 
-            {/* Line Items */}
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Line Items
-            </Typography>
-            <TableContainer component={Paper} variant="outlined">
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Line #</strong></TableCell>
-                    <TableCell><strong>Material Code</strong></TableCell>
-                    <TableCell><strong>Description</strong></TableCell>
-                    <TableCell align="right"><strong>Quantity</strong></TableCell>
-                    <TableCell align="right"><strong>Unit Price</strong></TableCell>
-                    <TableCell align="right"><strong>Total</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {po.line_items.map((item) => (
-                    <TableRow key={item.line_number}>
-                      <TableCell>{item.line_number}</TableCell>
-                      <TableCell>{item.material_code}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell align="right">{item.quantity}</TableCell>
-                      <TableCell align="right">
-                        {po.currency} {item.unit_price.toLocaleString()}
-                      </TableCell>
-                      <TableCell align="right">
-                        {po.currency} {(item.quantity * item.unit_price).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell colSpan={5} align="right">
-                      <strong>Total Value:</strong>
-                    </TableCell>
-                    <TableCell align="right">
-                      <strong>{po.currency} {po.total_value.toLocaleString()}</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </TabPanel>
+      <LineItemActionsMenu
+        anchorEl={menuAnchorEl}
+        actions={lineActions}
+        onClose={closeMenu}
+        onActionClick={(action) => {
+          void handleMenuAction(action);
+        }}
+      />
 
-        {/* Tab: MRP Exceptions */}
-        <TabPanel value={activeTab} index={1}>
-          <Box sx={{ px: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              MRP Exception Messages
-            </Typography>
-            {po.mrp_exceptions && po.mrp_exceptions !== 'NONE' ? (
-              <Alert severity="warning" icon={<DescriptionIcon />}>
-                <Typography variant="body1" fontWeight="bold">
-                  {po.mrp_exceptions}
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Please review the exception and take necessary action.
-                </Typography>
-              </Alert>
-            ) : (
-              <Alert severity="success">
-                No MRP exceptions for this purchase order.
-              </Alert>
-            )}
-          </Box>
-        </TabPanel>
+      <RevisionDialog
+        open={revisionDialogOpen}
+        lineItem={selectedActionLine || null}
+        fullscreen={revisionFullscreen}
+        notes={revisionNotes}
+        onNotesChange={setRevisionNotes}
+        onClose={() => {
+          setRevisionDialogOpen(false);
+          setActiveActionLineId(null);
+        }}
+        onToggleFullscreen={() => setRevisionFullscreen((prev) => !prev)}
+        onSubmit={() => {
+          void handleSubmitRevision();
+        }}
+      />
 
-        {/* Tab: Shipment & Tracking */}
-        <TabPanel value={activeTab} index={2}>
-          <Box sx={{ px: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Shipment & Tracking Information
-            </Typography>
-            <Alert severity="info">
-              Shipment tracking functionality will be available soon.
-            </Alert>
-          </Box>
-        </TabPanel>
+      <MoveDateDialog
+        open={moveDateDialogOpen}
+        lineItem={selectedActionLine || null}
+        action={moveDateAction}
+        fullscreen={moveDateFullscreen}
+        dateValue={moveDateValue}
+        notes={moveDateNotes}
+        onDateChange={setMoveDateValue}
+        onNotesChange={setMoveDateNotes}
+        onClose={() => {
+          setMoveDateDialogOpen(false);
+          setMoveDateAction(null);
+          setMoveDateValue('');
+          setMoveDateNotes('');
+          setActiveActionLineId(null);
+        }}
+        onToggleFullscreen={() => setMoveDateFullscreen((prev) => !prev)}
+        onSubmit={() => {
+          void handleSubmitMoveDate();
+        }}
+      />
 
-        {/* Tab: Documents */}
-        <TabPanel value={activeTab} index={3}>
-          <Box sx={{ px: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Documents
-            </Typography>
-            <Alert severity="info">
-              Document management functionality will be available soon.
-            </Alert>
-          </Box>
-        </TabPanel>
-
-        {/* Tab: Revision History */}
-        <TabPanel value={activeTab} index={4}>
-          <Box sx={{ px: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Revision History
-            </Typography>
-            <Alert severity="info">
-              Revision history functionality will be available soon.
-            </Alert>
-          </Box>
-        </TabPanel>
-      </Paper>
+      <ChatWidget
+        initialConversations={filteredChatData as Conversation[]}
+        title={`Team Messages - ${po.po_number}`}
+        subtitle="Internal corporate communications"
+      />
     </Box>
   );
 };

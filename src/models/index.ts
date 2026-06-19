@@ -48,11 +48,86 @@ export enum PurchaseOrderStatus {
 }
 
 export interface LineItem {
+  id?: string;
   line_number: number;
   material_code: string;
   description: string;
   quantity: number;
   unit_price: number;
+  unit?: string;
+  per?: number;
+  supplier_mat_code?: string;
+  transportation?: string;
+  shipment_date?: string;
+  required_in_house_date?: string;
+  net_value?: number;
+  updated_quantity?: number;
+  updated_unit_price?: number;
+  updated_delivery_date?: string;
+  updated_material_no?: string;
+  updated_description?: string;
+  updated_net_value?: number;
+  documents?: string[];
+  line_status?: string;
+  default_expanded?: boolean;
+  history?: POStatusHistory[];
+}
+
+export interface POPartyDetails {
+  supplier_no?: string;
+  email?: string;
+  address?: string;
+}
+
+export interface POBuyerDetails {
+  buyer?: string;
+  telephone?: string;
+  email?: string;
+}
+
+export interface POShipmentDetails {
+  incoterms?: string;
+  address?: string;
+}
+
+export interface POBillingDetails {
+  terms_of_payment?: string;
+  currency?: string;
+  send_invoice_to?: string;
+  bill_to_address?: string;
+}
+
+export interface PODetailsPanel {
+  supplier_details?: POPartyDetails;
+  buyer_details?: POBuyerDetails;
+  shipment_details?: POShipmentDetails;
+  billing_details?: POBillingDetails;
+}
+
+export interface POStatusHistory {
+  action: string;
+  actor_id: string;
+  actor_role: UserRole | string;
+  line_item_id: string;
+  previous_status: PurchaseOrderStatus | string;
+  new_status: PurchaseOrderStatus | string;
+  notes?: string;
+  timestamp: string;
+}
+
+export interface POLayoutConfig {
+  show_mrp_tab: boolean;
+  show_supplier_total_row: boolean;
+  show_bottom_page_action_bar: boolean;
+  show_ps_bottom_summary: boolean;
+}
+
+export interface POUIConfig {
+  main_tabs: string[];
+  header_actions: string[];
+  line_status_tabs: string[];
+  line_actions: string[];
+  layout: POLayoutConfig;
 }
 
 export interface PurchaseOrder {
@@ -71,6 +146,28 @@ export interface PurchaseOrder {
   mrp_exceptions: string;
   created_date: string;
   line_items: LineItem[];
+  po_details?: PODetailsPanel;
+  status_history?: POStatusHistory[];
+  workflow_stage?: string;
+  last_modified_by?: string;
+  last_modified_date?: string;
+  ui_config?: POUIConfig;
+  available_actions?: string[];
+}
+
+export interface POActionRequest {
+  action: string;
+  line_item_id: string;
+  notes?: string;
+  move_in_date?: string;
+  move_out_date?: string;
+}
+
+export interface PODropdownConfig {
+  role: UserRole | string;
+  ui_config: POUIConfig;
+  actions: string[];
+  status_transitions: Record<string, string>;
 }
 
 export interface POListResponse {
@@ -86,7 +183,8 @@ export interface POFilters {
   supplier_id?: string;
   procurement_specialist_id?: string;
   search?: string;
-  sort_by?: 'delivery_date_asc' | 'delivery_date_desc';
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
 
   po_number?: string;
   supplier_name?: string;
@@ -103,6 +201,7 @@ export interface POFilters {
   items_to?: number;
 
   mrp_exceptions?: string;
+  pinned_po_list?: string[];
 }
 
 export interface AdvanceFilters {
