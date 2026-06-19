@@ -62,6 +62,8 @@ export interface PurchaseOrder {
   status: PurchaseOrderStatus;
   supplier_id: string;
   supplier_name: string;
+  supplier_email?: string;
+  site?: string;
   procurement_specialist_id: string;
   delegated_user_id: string;
   currency: string;
@@ -70,6 +72,7 @@ export interface PurchaseOrder {
   payment_terms: string;
   mrp_exceptions: string;
   created_date: string;
+  revision_changes: number;
   line_items: LineItem[];
 }
 
@@ -92,6 +95,9 @@ export interface POFilters {
   po_number?: string;
   supplier_name?: string;
 
+  supplier_email?: string;
+  site?: string;
+
   total_value_from?: number;
   total_value_to?: number;
 
@@ -99,6 +105,7 @@ export interface POFilters {
   delivery_date_to?: string;
 
   source_system?: string;
+  revision_changes?: number;
 
   items_from?: number;
   items_to?: number;
