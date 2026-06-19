@@ -24,10 +24,12 @@ export const purchaseOrderService = {
     if (filters.sort_order) params.append('sort_order', filters.sort_order);
     if (filters.po_number) params.append('po_number', filters.po_number);
     if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
-    if (filters.total_value_from)
-      params.append('total_value_from', filters.total_value_from.toString());
+    if (filters.supplier_email) params.append('supplier_email', filters.supplier_email);
+    if (filters.site) params.append('site', filters.site);
+    if (filters.total_value_from) params.append('total_value_from', filters.total_value_from.toString());
     if (filters.total_value_to) params.append('total_value_to', filters.total_value_to.toString());
     if (filters.source_system) params.append('source_system', filters.source_system);
+    if (filters.revision_changes) params.append('revision_changes', filters.revision_changes.toString());
     if (filters.items_from) params.append('items_from', filters.items_from.toString());
     if (filters.items_to) params.append('items_to', filters.items_to.toString());
     if (filters.mrp_exceptions) params.append('mrp_exceptions', filters.mrp_exceptions);

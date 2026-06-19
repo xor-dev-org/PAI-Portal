@@ -39,9 +39,6 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { usePagination } from '@/hooks/usePagination';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
-// import StarIcon from '@mui/icons-material/Star';
-// import StarBorderIcon from '@mui/icons-material/StarBorder';
-
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 import { userService } from '@/api/services/userService';
@@ -83,85 +80,7 @@ const PurchaseOrders: React.FC = () => {
   const [pinnedPOIds, setPinnedPOIds] = useState<string[]>([]);
   const [pinnedPOs, setPinnedPOs] = useState<PurchaseOrder[]>([]);
   const [pinnedPOsRowCount, setPinnedPOsRowCount] = useState(0);
-  // Pin functionality
-  // const [pinnedPOIds, setPinnedPOIds] = useState<string[]>(() => {
-  //   const stored = localStorage.getItem('pinnedPOs');
-  //   return stored ? JSON.parse(stored) : [];
-  // });
   const [pinFilter, setPinFilter] = useState('all'); // 'all', 'pinned'
-
-  // Fetch pinnedPoIds (getPinnedPos)
-  // set state variable pinnedPOIds
-  // toggle row pin function
-
-  // const [pinnedPOsDisplayed, setPinnedPOsDisplayed] = useState<PurchaseOrder[]>([]);
-
-  // // Update localStorage when pinnedPOIds changes
-  // useEffect(() => {
-  //   let mounted = true;
-  //   const loadPinned = async () => {
-  //     if (!user || !user.id) {
-  //       setPinnedPOIds([]);
-  //       return;
-  //     }
-
-  //     try {
-  //       // Try loading from backend first
-  //       const serverPinned = await userService.getPinnedRows(user.id);
-  //       if (mounted) {
-  //         setPinnedPOIds(serverPinned || []);
-  //         pinnedInitializedRef.current = true;
-  //       }
-  //     } catch (err) {
-  //       // Fallback to localStorage
-  //       try {
-  //         const key = `pinnedPOs:${user.id}`;
-  //         const stored = localStorage.getItem(key);
-  //         if (mounted) setPinnedPOIds(stored ? JSON.parse(stored) : []);
-  //         if (mounted) pinnedInitializedRef.current = true;
-  //       } catch (e) {
-  //         console.error('Error loading pinned POs from localStorage', e);
-  //         if (mounted) setPinnedPOIds([]);
-  //         if (mounted) pinnedInitializedRef.current = true;
-  //       }
-  //     }
-  //   };
-
-  //   loadPinned();
-
-  //   return () => {
-  //     mounted = false;
-  //   };
-  // }, [user]);
-
-  // Track whether we've loaded initial pinned IDs from server/local before persisting
-  // const pinnedInitializedRef = useRef(false);
-
-  // // Update per-user localStorage when pinnedPOIds changes
-  // useEffect(() => {
-  //   if (!user || !user.id) return;
-
-  //   const key = `pinnedPOs:${user.id}`;
-  //   try {
-  //     localStorage.setItem(key, JSON.stringify(pinnedPOIds));
-  //   } catch (err) {
-  //     console.error('Error saving pinned POs to localStorage', err);
-  //   }
-
-  //   // Don't persist to backend until we've finished the initial load to avoid overwriting
-  //   if (!pinnedInitializedRef.current) {
-  //     return;
-  //   }
-
-  //   // Persist to backend
-  //   (async () => {
-  //     try {
-  //       await userService.updatePinnedRows(user.id, pinnedPOIds);
-  //     } catch (err) {
-  //       console.error('Error updating pinned rows on server', err);
-  //     }
-  //   })();
-  // }, [pinnedPOIds, user]);
 
   const togglePin = (poId: string) => {
     console.log('--pids: ', pinnedPOIds, '--poId: ', poId);
@@ -521,17 +440,12 @@ const PurchaseOrders: React.FC = () => {
       },
       {
         field: 'supplier_name',
-        headerName: 'Supplier Name',
+        headerName: 'Supplier',
         width: 150,
       },
       {
-        field: 'supplier_id',
-        headerName: 'Supplier ID',
-        width: 100,
-      },
-      {
         field: 'status',
-        headerName: 'Status',
+        headerName: 'PO Status',
         width: 150,
         renderCell: (params) => (
           <Chip
@@ -541,6 +455,11 @@ const PurchaseOrders: React.FC = () => {
             size="small"
           />
         ),
+      },
+      {
+        field: 'source_system',
+        headerName: 'ERP',
+        width: 120,
       },
       {
         field: 'total_value',
@@ -554,34 +473,51 @@ const PurchaseOrders: React.FC = () => {
       },
       {
         field: 'delivery_date',
-        headerName: 'Delivery Date',
+        headerName: 'Committed Date',  
         width: 150,
         renderCell: (params) => format(new Date(params.value), 'MMM, dd yyyy'),
       },
       {
-        field: 'source_system',
-        headerName: 'Source',
-        width: 120,
-      },
-      {
         field: 'line_items',
-        headerName: 'Items',
+        headerName: 'Line Items',
         width: 70,
         renderCell: (params) => params.value.length,
       },
       {
-        field: 'mrp_exceptions',
-        headerName: 'MRP Exceptions',
-        width: 150,
-        renderCell: (params) => (
-          <Chip
-            variant="filled"
-            label={params.value.replace(/_/g, ' ')}
-            color={params.value === 'NONE' ? 'success' : 'error'}
-            size="small"
-          />
-        ),
+        field: 'supplier_id',
+        headerName: 'Supplier Number',
+        width: 100,
       },
+      {
+        field: 'supplier_email',
+        headerName: 'Supplier Email',
+        width: 150,
+      },
+     
+      // {
+      //   field: 'mrp_exceptions',
+      //   headerName: 'MRP Exceptions',
+      //   width: 150,
+      //   renderCell: (params) => (
+      //     <Chip
+      //       variant="filled"
+      //       label={params.value.replace(/_/g, ' ')}
+      //       color={params.value === 'NONE' ? 'success' : 'error'}
+      //       size="small"
+      //     />
+      //   ),
+      // },
+      {
+        field: 'revision_changes',
+        headerName: 'Revision Changes',
+        width: 70,
+      },
+       {
+        field: 'site',
+        headerName: 'Site',
+        width: 100
+      },
+
     ],
     [theme, pinnedPOIds, togglePin, statusColors]
   );
