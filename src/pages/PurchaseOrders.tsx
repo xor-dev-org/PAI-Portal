@@ -20,12 +20,11 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
-  Tab,
-  Tabs,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import ViewListIcon from '@mui/icons-material/ViewList';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import {
@@ -44,7 +43,6 @@ import { logger } from '@/services/logger';
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 import { userService } from '@/api/services/userService';
-import { userInfo } from 'os';
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -527,6 +525,24 @@ const PurchaseOrders: React.FC = () => {
     [theme, pinnedPOIds, togglePin, statusColors]
   );
 
+  const displayedRows = React.useMemo(() => {
+    const rows = pinFilter === 'pinned' ? pinnedPOs : purchaseOrders;
+
+    switch (selectedTab) {
+      case 1: // OPEN PO
+        return rows.filter(
+          (po) => po.status === 'CREATED' || po.status === 'IN_PROGRESS' || po.status === 'APPROVED'
+        );
+
+      case 2: // PASS DELIVERY DATE
+        return rows;
+
+      case 0: // ALL PO
+      default:
+        return rows;
+    }
+  }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
+
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
   }
@@ -534,9 +550,45 @@ const PurchaseOrders: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
-        Purchase Order Listing
-      </Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          mb: 1,
+        }}
+      >
+        <Box
+          sx={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            backgroundColor: '#5E7DA5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <ViewListIcon
+            sx={{
+              color: '#fff',
+              fontSize: 18,
+            }}
+          />
+        </Box>
+
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{
+            color: '#1F5A92',
+            lineHeight: 1,
+          }}
+        >
+          Purchase Order Listing
+        </Typography>
+      </Box>
       <Typography variant="body2" gutterBottom fontWeight="bold">
         Updated on {new Date().toLocaleString()}
       </Typography>
@@ -552,9 +604,15 @@ const PurchaseOrders: React.FC = () => {
         <>
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
             <DataGrid
-              rows={pinFilter === 'pinned' ? pinnedPOs : purchaseOrders}
+              rows={displayedRows}
               columns={columns}
-              rowCount={pinFilter === 'pinned' ? pinnedPOsRowCount : rowCount}
+              rowCount={
+                selectedTab === 1
+                  ? displayedRows.length
+                  : pinFilter === 'pinned'
+                    ? pinnedPOsRowCount
+                    : rowCount
+              }
               rowHeight={35}
               // getRowClassName={(params) => {
               //   // console.log('params: ', params);

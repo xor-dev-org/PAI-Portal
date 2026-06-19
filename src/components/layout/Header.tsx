@@ -18,7 +18,6 @@ import {
   Settings,
   Menu as MenuIcon,
 } from '@mui/icons-material';
-// import { useThemeMode } from '@/theme/ThemeProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
