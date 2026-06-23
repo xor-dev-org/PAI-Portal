@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       case 'PROCUREMENT_SPECIALIST':
         return 'Procurement Cockpit';
       case 'SUPPLIER':
-        return 'Supplier Collaboration Portal';
+        return 'Supplier Collaboration';
       default:
         return 'Procurement Cockpit';
     }
@@ -97,14 +97,38 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <MenuIcon />
         </IconButton>
 
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          {getPortalName(user?.role || '')}
-        </Typography>
+        <Box
+          sx={{
+            flexGrow: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <MenuIcon
+            sx={{
+              color: '#FFFFFF',
+              fontSize: 26,
+            }}
+          />
+
+          <Typography
+            noWrap
+            component="div"
+            sx={{
+              fontSize: '1.25rem',
+              fontWeight: 400,
+              color: '#FFFFFF',
+            }}
+          >
+            {getPortalName(user?.role || '')}
+          </Typography>
+        </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {user && (
-            <Chip 
-              label={getRoleDisplay(user.role)} 
+            <Chip
+              label={getRoleDisplay(user.role)}
               color={getRoleColor(user.role)}
               size="small"
               sx={{ display: { xs: 'none', sm: 'flex' } }}
@@ -121,10 +145,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <>
               <Tooltip title="Account settings">
                 <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-                  <Avatar
-                    alt={user.name}
-                    sx={{ width: 36, height: 36, bgcolor: 'secondary.main' }}
-                  >
+                  <Avatar alt={user.name} sx={{ width: 36, height: 36, bgcolor: 'secondary.main' }}>
                     {user.name.charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
@@ -147,7 +168,12 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     {user.email}
                   </Typography>
                 </MenuItem>
-                <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }}>
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    navigate('/settings');
+                  }}
+                >
                   <Settings sx={{ mr: 1 }} fontSize="small" />
                   Settings
                 </MenuItem>
