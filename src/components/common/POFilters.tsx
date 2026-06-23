@@ -43,7 +43,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   pinFilter,
   onPinFilterChange,
   pinnedCount = 0,
-  availableSites,
+  // availableSites,
   selectedTab,
   onTabChange,
 }) => {
@@ -59,9 +59,10 @@ const POFilters: React.FC<POFiltersProps> = ({
       sx={{
         p: 1,
         mb: 0,
-        borderRadius: 0,
-        boxShadow: 0,
         width: '100%',
+        border: '1.5px solid #CFCFCF',
+        borderRadius: '8px 8px 0 0',
+        boxShadow: 'none',
       }}
     >
       <Box
@@ -91,7 +92,8 @@ const POFilters: React.FC<POFiltersProps> = ({
         >
           <Tab label="ALL PO" />
           <Tab label="OPEN PO" />
-          <Tab label="PASS DELIVERY DATE" />
+          <Tab label="PO TO REVIEW" />
+          <Tab label="MRP EXCEPTIONS" />
         </Tabs>
 
         {/* RIGHT SIDE - ALL FILTERS */}
@@ -139,7 +141,7 @@ const POFilters: React.FC<POFiltersProps> = ({
                 onBlur={() => setIsFocused(false)}
                 InputProps={{
                   startAdornment: (
-                    <InputAdornment position="start" sx={{ml:0.5, mr:1}}>
+                    <InputAdornment position="start" sx={{ ml: 0.5, mr: 1 }}>
                       <SearchIcon color={isExpanded ? 'primary' : 'action'} />
                     </InputAdornment>
                   ),
@@ -161,7 +163,7 @@ const POFilters: React.FC<POFiltersProps> = ({
                   transition: theme.transitions.create(['width', 'background-color'], {
                     duration: theme.transitions.duration.standard,
                   }),
-                  width: isExpanded ? { xs: '100%', sm: 300, md: 350 } : 40,
+                  width: isExpanded ? { xs: '100%', sm: 240, md: 280 } : 40,
 
                   '& .MuiOutlinedInput-root': {
                     height: 40,
