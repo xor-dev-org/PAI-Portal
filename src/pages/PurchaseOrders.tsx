@@ -32,6 +32,7 @@ import {
   POFilters as POFiltersType,
   AdvanceFilters,
   PurchaseOrderStatus,
+  User,
 } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
 import POFilters from '@/components/common/POFilters';
@@ -54,6 +55,7 @@ const PurchaseOrders: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [procurementSpecialists, setProcurementSpecialists] = useState<User[]>([]);
 
   // Filter states
   const [searchInput, setSearchInput] = useState('');
@@ -96,69 +98,18 @@ const PurchaseOrders: React.FC = () => {
     });
   };
 
+  useEffect(() => {
+    const loadProcurementSpecialists = async () => {
+      try {
+        const users = await userService.getUsersByRole('PROCUREMENT_SPECIALIST');
+        setProcurementSpecialists(users);
+      } catch (error) {
+        console.error('Failed to load procurement specialists', error);
+      }
+    };
 
-
-  // useEffect(() => {
-  //   if (user && user.id) {
-  //     const response = userService.updatePinnedRows(user.id, pinnedPOIds);
-  //     console.log(`Updated pinned rows for user ${user.id}: ${JSON.stringify(response)}`);
-  //   }
-  // }, [pinnedPOIds]);
-
-  // When pinFilter is 'pinned', fetch full PO details for all pinned IDs so we can show them across pages
-  // useEffect(() => {
-  //   // let mounted = true;
-  //   const fetchPinned = async () => {
-  //     try {
-  //       // setLoading(true);
-  //       // if (pinFilter !== 'pinned') {
-  //       //   setPinnedPOsDisplayed([]);
-  //       //   return;
-  //       // }
-
-  //       // if (!pinnedPOIds || pinnedPOIds.length === 0) {
-  //       //   setPinnedPOsDisplayed([]);
-  //       //   return;
-  //       // }
-
-  //       const promises = pinnedPOIds.map((id) => purchaseOrderService.getPOById(id));
-  //       const results = await Promise.allSettled(promises);
-  //       const successful = results
-  //         .filter(
-  //           (result): result is PromiseFulfilledResult<PurchaseOrder> =>
-  //             result.status === 'fulfilled'
-  //         )
-  //         .map((result) => result.value);
-
-  //       // Only display pinned POs that are assigned to the current user
-  //       // const visible = successful.filter((po) => {
-  //       //   if (!user) return false;
-  //       //   if (user.role === 'SUPPLIER') return po.supplier_id === user.id;
-  //       //   if (user.role === 'PROCUREMENT_SPECIALIST')
-  //       //     return po.procurement_specialist_id === user.id;
-  //       //   return true;
-  //       // });
-
-  //       // if (mounted) {
-  //       // setPinnedPOsDisplayed(visible);
-  //       if (successful.length !== pinnedPOIds.length) {
-  //         setPinnedPOIds(successful.map((po) => po.id));
-  //       }
-  //       // }
-  //     } catch (err) {
-  //       console.error('Error fetching pinned POs:', err);
-  //       // if (mounted) setPinnedPOsDisplayed([]);
-  //     } finally {
-  //       // setLoading(false);
-  //     }
-  //   };
-
-  //   fetchPinned();
-
-  //   // return () => {
-  //   //   // mounted = false;
-  //   // };
-  // }, [pinFilter, pinnedPOIds, user]);
+    loadProcurementSpecialists();
+  }, []);
 
   const fetchPurchaseOrders = useCallback(async () => {
     const startTime = performance.now();
@@ -197,6 +148,8 @@ const PurchaseOrders: React.FC = () => {
       console.log('------------------Fetched pinned PO List from server :', pinnedPOList.data);
 
       setPinnedPOs(pinnedPOList.data);
+      console.log('Current User:', user);
+      console.log('Pinned POs Returned:', pinnedPOList.data);
       setPinnedPOsRowCount(pinnedPOList.total);
       console.log('Final filters:', filters);
 
@@ -369,6 +322,16 @@ const PurchaseOrders: React.FC = () => {
     setShowAdvancedFilters(false);
   };
 
+  const procurementSpecialistMap = React.useMemo(() => {
+    return procurementSpecialists.reduce(
+      (acc, ps) => {
+        acc[ps.id] = ps;
+        return acc;
+      },
+      {} as Record<string, User>
+    );
+  }, [procurementSpecialists]);
+
   const statusColors = React.useMemo(
     () =>
       ({
@@ -385,7 +348,7 @@ const PurchaseOrders: React.FC = () => {
       >,
     []
   );
-
+  console.log("role:", user?.role);
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
@@ -422,7 +385,7 @@ const PurchaseOrders: React.FC = () => {
       {
         field: 'po_number',
         headerName: 'PO Number',
-        width: 150,
+        width: 100,
 
         renderCell: (params) => (
           <Typography
@@ -441,15 +404,19 @@ const PurchaseOrders: React.FC = () => {
           },
         },
       },
-      {
-        field: 'supplier_name',
-        headerName: 'Supplier',
-        width: 150,
-      },
+      ...(user?.role !== 'SUPPLIER'
+        ? [
+            {
+              field: 'supplier_name',
+              headerName: 'Supplier',
+              width: 120,
+            },
+          ]
+        : []),
       {
         field: 'status',
         headerName: 'PO Status',
-        width: 150,
+        width: 140,
         renderCell: (params) => (
           <Chip
             variant="outlined"
@@ -459,15 +426,26 @@ const PurchaseOrders: React.FC = () => {
           />
         ),
       },
+
+      ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'supplier_name',
+              headerName: 'Supplier',
+              width: 120,
+            },
+          ]
+        : []),
+
       {
         field: 'source_system',
         headerName: 'ERP',
-        width: 120,
+        width: 80,
       },
       {
         field: 'total_value',
         headerName: 'Total Value',
-        width: 150,
+        width: 120,
         renderCell: (params) => (
           <Typography height={'100%'} alignContent={'center'} fontSize={'0.8rem'}>
             {params.row.currency} {params.value.toLocaleString()}
@@ -476,8 +454,8 @@ const PurchaseOrders: React.FC = () => {
       },
       {
         field: 'delivery_date',
-        headerName: 'Committed Date',  
-        width: 150,
+        headerName: 'Committed Date',
+        width: 130,
         renderCell: (params) => format(new Date(params.value), 'MMM, dd yyyy'),
       },
       {
@@ -496,7 +474,7 @@ const PurchaseOrders: React.FC = () => {
         headerName: 'Supplier Email',
         width: 150,
       },
-     
+
       // {
       //   field: 'mrp_exceptions',
       //   headerName: 'MRP Exceptions',
@@ -515,14 +493,75 @@ const PurchaseOrders: React.FC = () => {
         headerName: 'Revision Changes',
         width: 70,
       },
-       {
-        field: 'site',
-        headerName: 'Site',
-        width: 100
-      },
+      ...(user?.role !== 'SUPPLIER'
+        ? [
+            {
+              field: 'site',
+              headerName: 'Site',
+              width: 70,
+            },
+          ]
+        : []),
 
+      ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'buyer_name',
+              headerName: 'Buyer Name',
+              width: 150,
+            },
+            {
+              field: 'buyer_email',
+              headerName: 'Buyer Email',
+              width: 160,
+            },
+            {
+              field: 'buyer_phone',
+              headerName: 'Buyer Phone No',
+              width: 140,
+            },
+          ]
+        : []),
+        ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'site',
+              headerName: 'Site',
+              width: 70,
+            },
+          ]
+        : []),
     ],
-    [theme, pinnedPOIds, togglePin, statusColors]
+    [theme, pinnedPOIds, togglePin, statusColors, procurementSpecialistMap, user?.role]
+  );
+  
+console.log(columns.map((c) => c.field));
+
+
+  //saperate page view for supplier & PS
+  const supplierColumns = React.useMemo(
+    () =>
+      columns.filter((col) =>
+        [
+          'pin',
+          'po_number',
+          'status',
+          'supplier_name',
+          'total_value',
+          'line_items',
+          'revision_changes',
+          'buyer_name',
+          'buyer_email',
+          'buyer_phone',
+          'site',
+        ].includes(col.field)
+      ),
+    [columns]
+  );
+
+  const gridColumns = React.useMemo(
+    () => (user?.role === 'SUPPLIER' ? supplierColumns : columns),
+    [user?.role, supplierColumns, columns]
   );
 
   const displayedRows = React.useMemo(() => {
@@ -546,7 +585,6 @@ const PurchaseOrders: React.FC = () => {
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
   }
-
 
   return (
     <Box>
@@ -579,19 +617,28 @@ const PurchaseOrders: React.FC = () => {
         </Box>
 
         <Typography
-          variant="h5"
-          fontWeight="bold"
           sx={{
-            color: '#1F5A92',
-            lineHeight: 1,
+            color: '#0B4F88',
+            fontSize: '1.50rem',
+            fontWeight: 400,
+            lineHeight: 1.2,
           }}
         >
           Purchase Order Listing
         </Typography>
       </Box>
-      <Typography variant="body2" gutterBottom fontWeight="bold">
+
+      <Typography
+        sx={{
+          color: 'black',
+          fontSize: '1rem',
+          fontWeight: 400,
+          mb: 4,
+        }}
+      >
         Updated on {new Date().toLocaleString()}
       </Typography>
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -605,7 +652,7 @@ const PurchaseOrders: React.FC = () => {
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
             <DataGrid
               rows={displayedRows}
-              columns={columns}
+              columns={gridColumns}
               rowCount={
                 selectedTab === 1
                   ? displayedRows.length
@@ -657,6 +704,7 @@ const PurchaseOrders: React.FC = () => {
                   justifyContent: 'flex-end',
                   width: '100%',
                 },
+                
               }}
               slots={{
                 toolbar: () => (
