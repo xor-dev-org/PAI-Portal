@@ -11,9 +11,13 @@ export interface User {
   phone?: string;
   email: string;
   role: UserRole;
+  password?: string;
   supplier_number?: string;
   address?: string;
   site?: string;
+  supplier_msid?: number | null;
+  pinned_rows?: string[];
+  line_pinned_rows?: string[];
 }
 
 export interface AuthResponse {
@@ -263,14 +267,14 @@ export interface Delegation {
   po_number: string;
   supplier_name: string;
   delegated_from_id: string;
-  delegated_from_name: string;
+  delegated_from_name?: string;
   delegated_to_id: string;
-  delegated_to_name: string;
+  delegated_to_name?: string;
   role: string;
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
   status: DelegationStatus;
-  created_date: string;
+  created_date: string | null;
   total_value?: number;
 }
 

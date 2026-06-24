@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Close, OpenInFull } from '@mui/icons-material';
-import { Box, Button, Dialog, DialogActions, DialogContent, Divider, Grid, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, Divider, IconButton, Stack, TextField, Typography } from '@mui/material';
 
 import { poDetailsColors } from './constants';
 
@@ -29,6 +29,10 @@ const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
   onClose,
   onSubmit,
 }) => {
+  void materialCode;
+  void quantity;
+  void deliveryDate;
+
   const [fullscreen, setFullscreen] = useState(false);
 
   return (

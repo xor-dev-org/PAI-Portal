@@ -76,8 +76,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   }, [conversations, open, selectedId]);
 
   useEffect(() => {
-    if (initialConversations.length > 0) {
-      const firstId = initialConversations[0].id;
+    const firstConversation = initialConversations[0];
+    if (firstConversation) {
+      const firstId = firstConversation.id;
       setSelectedId(firstId);
       setConversations(
         initialConversations.map((c) => c.id === firstId ? { ...c, unread: 0 } : c)
@@ -266,7 +267,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                             download={message.fileName}
                             color="inherit"
                           >
-                            <Download size="small" />
+                            <Download fontSize="small" />
                           </IconButton>
                         </Box>
                         {message.text && !message.text.startsWith('📄 Attached:') && (

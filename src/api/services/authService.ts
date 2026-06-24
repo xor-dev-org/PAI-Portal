@@ -25,12 +25,20 @@ export const authService = {
 
   // Supplier Signup
   supplierSignup: async (data: SignupRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/supplier/signup', data);
-    if (response.data.access_token) {
-      cookieUtils.setCookie('access_token', response.data.access_token, 7);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    // Backend signup creates the supplier user; login still returns the token payload.
+    await apiClient.post('/auth/supplier/signup', data);
+
+    const loginResponse = await apiClient.post<AuthResponse>('/auth/supplier/login', {
+      email: data.email,
+      password: data.password,
+    });
+
+    if (loginResponse.data.access_token) {
+      cookieUtils.setCookie('access_token', loginResponse.data.access_token, 7);
+      localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
     }
-    return response.data;
+
+    return loginResponse.data;
   },
 
   // Logout

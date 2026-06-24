@@ -1,6 +1,6 @@
 import React from 'react';
 import { Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material';
-import { Check, Close, InfoOutlined, MoreVert, PushPin, PushPinOutlined, Download, Upload, Replay } from '@mui/icons-material';
+import { Check, Close, InfoOutlined, MoreVert, PushPin, PushPinOutlined, Download, Replay } from '@mui/icons-material';
 import { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 
 import { LineItem } from '@/models';

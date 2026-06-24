@@ -35,6 +35,7 @@ const basePO: PurchaseOrder = {
   total_value: 12000,
   delivery_date: '2026-06-25',
   payment_terms: 'Net 30',
+  revision_changes: 0,
   mrp_exceptions: 'NONE',
   created_date: '2026-05-28',
   line_items: [

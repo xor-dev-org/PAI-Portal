@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, Avatar, Chip, Stack, Typography } from '@mui/material';
-import { HistoryOutlined, InfoRounded } from '@mui/icons-material';
+import { HistoryOutlined } from '@mui/icons-material';
 import {
   Timeline,
   TimelineConnector,

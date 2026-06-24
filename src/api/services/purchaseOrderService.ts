@@ -23,8 +23,8 @@ export const purchaseOrderService = {
   getPOList: async (filters: POFilters = {}): Promise<POListResponse> => {
     const params = new URLSearchParams();
 
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
+    if (filters.page !== undefined) params.append('page', filters.page.toString());
+    if (filters.page_size !== undefined) params.append('page_size', filters.page_size.toString());
     if (filters.status) params.append('status', filters.status);
     if (filters.supplier_id) params.append('supplier_id', filters.supplier_id);
     if (filters.procurement_specialist_id)
@@ -36,16 +36,18 @@ export const purchaseOrderService = {
     if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
     if (filters.supplier_email) params.append('supplier_email', filters.supplier_email);
     if (filters.site) params.append('site', filters.site);
-    if (filters.total_value_from) params.append('total_value_from', filters.total_value_from.toString());
-    if (filters.total_value_to) params.append('total_value_to', filters.total_value_to.toString());
+    if (filters.total_value_from !== undefined) params.append('total_value_from', filters.total_value_from.toString());
+    if (filters.total_value_to !== undefined) params.append('total_value_to', filters.total_value_to.toString());
     if (filters.source_system) params.append('source_system', filters.source_system);
-    if (filters.revision_changes) params.append('revision_changes', filters.revision_changes.toString());
-    if (filters.items_from) params.append('items_from', filters.items_from.toString());
-    if (filters.items_to) params.append('items_to', filters.items_to.toString());
+    if (filters.revision_changes !== undefined) params.append('revision_changes', filters.revision_changes.toString());
+    if (filters.items_from !== undefined) params.append('items_from', filters.items_from.toString());
+    if (filters.items_to !== undefined) params.append('items_to', filters.items_to.toString());
     if (filters.mrp_exceptions) params.append('mrp_exceptions', filters.mrp_exceptions);
     if (filters.delivery_date_from) params.append('delivery_date_from', filters.delivery_date_from);
     if (filters.delivery_date_to) params.append('delivery_date_to', filters.delivery_date_to);
-    if (filters.pinned_po_list) params.append('pinned_po_list', filters.pinned_po_list.join(','));
+    if (filters.pinned_po_list?.length) {
+      filters.pinned_po_list.forEach((poId) => params.append('pinned_po_list', poId));
+    }
 
     const url = `/po?${params.toString()}`;
     const startTime = performance.now();
@@ -61,8 +63,8 @@ export const purchaseOrderService = {
   getPinnedPOList: async (userId: string, filters: POFilters = {}): Promise<POListResponse> => {
     const params = new URLSearchParams();
 
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
+    if (filters.page !== undefined) params.append('page', filters.page.toString());
+    if (filters.page_size !== undefined) params.append('page_size', filters.page_size.toString());
 
     const url = `/po/pinned_po_list?user_id=${userId}&${params.toString()}`;
     const startTime = performance.now();
@@ -116,7 +118,10 @@ export const purchaseOrderService = {
 
     const disposition = response.headers['content-disposition'] as string | undefined;
     const fileNameMatch = disposition?.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
-    const fileName = fileNameMatch ? decodeURIComponent(fileNameMatch[1].replace(/\"/g, '').trim()) : null;
+    const extractedFileName = fileNameMatch?.[1];
+    const fileName = extractedFileName
+      ? decodeURIComponent(extractedFileName.replace(/\"/g, '').trim())
+      : null;
 
     return { blob: response.data, fileName };
   },

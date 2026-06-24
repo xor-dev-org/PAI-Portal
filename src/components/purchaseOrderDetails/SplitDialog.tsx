@@ -19,6 +19,9 @@ type SplitDialogProps = {
 };
 
 const SplitDialog: React.FC<SplitDialogProps> = ({ open, lineId, materialCode, rows, note, onChangeRows, onNoteChange, onClose, onSubmit }) => {
+  void note;
+  void onNoteChange;
+
   const [fullscreen, setFullscreen] = useState(false);
 
   return (

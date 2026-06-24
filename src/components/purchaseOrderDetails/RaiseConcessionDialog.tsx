@@ -40,6 +40,10 @@ const RaiseConcessionDialog: React.FC<RaiseConcessionDialogProps> = ({
   onClose,
   onSubmit,
 }) => {
+  void documentsRows;
+  void selectedDocumentId;
+  void onDocumentIdChange;
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 1 } }}>
       <Box sx={{ px: 2, py: 1, backgroundColor: poDetailsColors.darkBlue, color: '#fff', position: 'relative' }}>

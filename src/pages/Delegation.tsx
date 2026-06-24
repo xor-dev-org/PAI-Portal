@@ -76,12 +76,6 @@ const DelegationPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter, sortOrder, searchQuery]);
 
-  // Fetch delegations when filters change
-  useEffect(() => {
-    fetchDelegations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, sortOrder, searchQuery]);
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -489,8 +483,12 @@ const DelegationPage: React.FC = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>{getDelegatedToName(delegation)}</TableCell>
-                    <TableCell>{format(new Date(delegation.start_date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell>{format(new Date(delegation.end_date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>
+                      {delegation.start_date ? format(new Date(delegation.start_date), 'dd/MM/yyyy') : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {delegation.end_date ? format(new Date(delegation.end_date), 'dd/MM/yyyy') : '-'}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={delegation.status}

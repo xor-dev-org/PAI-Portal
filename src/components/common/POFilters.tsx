@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Box, TextField, Tooltip, Paper, InputAdornment, Button, Typography, IconButton, useTheme,Divider, Tabs, Tab} from '@mui/material';
+import { Box, TextField, Tooltip, Paper, InputAdornment, Button, IconButton, useTheme,Divider, Tabs, Tab} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -25,7 +25,7 @@ interface POFiltersProps {
   pinFilter: string;
   onPinFilterChange: (value: string) => void;
   pinnedCount?: number;
-  availableSites: string[];
+  availableSites?: string[];
   selectedTab: number;
   onTabChange: (tab: number) => void;
 }
@@ -43,7 +43,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   pinFilter,
   onPinFilterChange,
   pinnedCount = 0,
-  // availableSites,
+  availableSites: _availableSites,
   selectedTab,
   onTabChange,
 }) => {
