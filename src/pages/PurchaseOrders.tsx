@@ -24,6 +24,7 @@ import {
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import ViewListIcon from '@mui/icons-material/ViewList';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import {
@@ -31,6 +32,7 @@ import {
   POFilters as POFiltersType,
   AdvanceFilters,
   PurchaseOrderStatus,
+  User,
 } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
 import POFilters from '@/components/common/POFilters';
@@ -42,7 +44,6 @@ import { logger } from '@/services/logger';
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 import { userService } from '@/api/services/userService';
-import { userInfo } from 'os';
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -51,8 +52,10 @@ const PurchaseOrders: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [procurementSpecialists, setProcurementSpecialists] = useState<User[]>([]);
 
   // Filter states
   const [searchInput, setSearchInput] = useState('');
@@ -95,67 +98,18 @@ const PurchaseOrders: React.FC = () => {
     });
   };
 
-  // useEffect(() => {
-  //   if (user && user.id) {
-  //     const response = userService.updatePinnedRows(user.id, pinnedPOIds);
-  //     console.log(`Updated pinned rows for user ${user.id}: ${JSON.stringify(response)}`);
-  //   }
-  // }, [pinnedPOIds]);
+  useEffect(() => {
+    const loadProcurementSpecialists = async () => {
+      try {
+        const users = await userService.getUsersByRole('PROCUREMENT_SPECIALIST');
+        setProcurementSpecialists(users);
+      } catch (error) {
+        console.error('Failed to load procurement specialists', error);
+      }
+    };
 
-  // When pinFilter is 'pinned', fetch full PO details for all pinned IDs so we can show them across pages
-  // useEffect(() => {
-  //   // let mounted = true;
-  //   const fetchPinned = async () => {
-  //     try {
-  //       // setLoading(true);
-  //       // if (pinFilter !== 'pinned') {
-  //       //   setPinnedPOsDisplayed([]);
-  //       //   return;
-  //       // }
-
-  //       // if (!pinnedPOIds || pinnedPOIds.length === 0) {
-  //       //   setPinnedPOsDisplayed([]);
-  //       //   return;
-  //       // }
-
-  //       const promises = pinnedPOIds.map((id) => purchaseOrderService.getPOById(id));
-  //       const results = await Promise.allSettled(promises);
-  //       const successful = results
-  //         .filter(
-  //           (result): result is PromiseFulfilledResult<PurchaseOrder> =>
-  //             result.status === 'fulfilled'
-  //         )
-  //         .map((result) => result.value);
-
-  //       // Only display pinned POs that are assigned to the current user
-  //       // const visible = successful.filter((po) => {
-  //       //   if (!user) return false;
-  //       //   if (user.role === 'SUPPLIER') return po.supplier_id === user.id;
-  //       //   if (user.role === 'PROCUREMENT_SPECIALIST')
-  //       //     return po.procurement_specialist_id === user.id;
-  //       //   return true;
-  //       // });
-
-  //       // if (mounted) {
-  //       // setPinnedPOsDisplayed(visible);
-  //       if (successful.length !== pinnedPOIds.length) {
-  //         setPinnedPOIds(successful.map((po) => po.id));
-  //       }
-  //       // }
-  //     } catch (err) {
-  //       console.error('Error fetching pinned POs:', err);
-  //       // if (mounted) setPinnedPOsDisplayed([]);
-  //     } finally {
-  //       // setLoading(false);
-  //     }
-  //   };
-
-  //   fetchPinned();
-
-  //   // return () => {
-  //   //   // mounted = false;
-  //   // };
-  // }, [pinFilter, pinnedPOIds, user]);
+    loadProcurementSpecialists();
+  }, []);
 
   const fetchPurchaseOrders = useCallback(async () => {
     const startTime = performance.now();
@@ -194,6 +148,8 @@ const PurchaseOrders: React.FC = () => {
       console.log('------------------Fetched pinned PO List from server :', pinnedPOList.data);
 
       setPinnedPOs(pinnedPOList.data);
+      console.log('Current User:', user);
+      console.log('Pinned POs Returned:', pinnedPOList.data);
       setPinnedPOsRowCount(pinnedPOList.total);
       console.log('Final filters:', filters);
 
@@ -366,6 +322,16 @@ const PurchaseOrders: React.FC = () => {
     setShowAdvancedFilters(false);
   };
 
+  const procurementSpecialistMap = React.useMemo(() => {
+    return procurementSpecialists.reduce(
+      (acc, ps) => {
+        acc[ps.id] = ps;
+        return acc;
+      },
+      {} as Record<string, User>
+    );
+  }, [procurementSpecialists]);
+
   const statusColors = React.useMemo(
     () =>
       ({
@@ -382,7 +348,7 @@ const PurchaseOrders: React.FC = () => {
       >,
     []
   );
-
+  console.log("role:", user?.role);
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
@@ -419,7 +385,7 @@ const PurchaseOrders: React.FC = () => {
       {
         field: 'po_number',
         headerName: 'PO Number',
-        width: 150,
+        width: 100,
 
         renderCell: (params) => (
           <Typography
@@ -438,15 +404,19 @@ const PurchaseOrders: React.FC = () => {
           },
         },
       },
-      {
-        field: 'supplier_name',
-        headerName: 'Supplier',
-        width: 150,
-      },
+      ...(user?.role !== 'SUPPLIER'
+        ? [
+            {
+              field: 'supplier_name',
+              headerName: 'Supplier',
+              width: 120,
+            },
+          ]
+        : []),
       {
         field: 'status',
         headerName: 'PO Status',
-        width: 150,
+        width: 140,
         renderCell: (params) => (
           <Chip
             variant="outlined"
@@ -456,15 +426,26 @@ const PurchaseOrders: React.FC = () => {
           />
         ),
       },
+
+      ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'supplier_name',
+              headerName: 'Supplier',
+              width: 120,
+            },
+          ]
+        : []),
+
       {
         field: 'source_system',
         headerName: 'ERP',
-        width: 120,
+        width: 80,
       },
       {
         field: 'total_value',
         headerName: 'Total Value',
-        width: 150,
+        width: 120,
         renderCell: (params) => (
           <Typography height={'100%'} alignContent={'center'} fontSize={'0.8rem'}>
             {params.row.currency} {params.value.toLocaleString()}
@@ -473,8 +454,8 @@ const PurchaseOrders: React.FC = () => {
       },
       {
         field: 'delivery_date',
-        headerName: 'Committed Date',  
-        width: 150,
+        headerName: 'Committed Date',
+        width: 130,
         renderCell: (params) => format(new Date(params.value), 'MMM, dd yyyy'),
       },
       {
@@ -493,7 +474,7 @@ const PurchaseOrders: React.FC = () => {
         headerName: 'Supplier Email',
         width: 150,
       },
-     
+
       // {
       //   field: 'mrp_exceptions',
       //   headerName: 'MRP Exceptions',
@@ -512,15 +493,94 @@ const PurchaseOrders: React.FC = () => {
         headerName: 'Revision Changes',
         width: 70,
       },
-       {
-        field: 'site',
-        headerName: 'Site',
-        width: 100
-      },
+      ...(user?.role !== 'SUPPLIER'
+        ? [
+            {
+              field: 'site',
+              headerName: 'Site',
+              width: 70,
+            },
+          ]
+        : []),
 
+      ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'buyer_name',
+              headerName: 'Buyer Name',
+              width: 150,
+            },
+            {
+              field: 'buyer_email',
+              headerName: 'Buyer Email',
+              width: 160,
+            },
+            {
+              field: 'buyer_phone',
+              headerName: 'Buyer Phone No',
+              width: 140,
+            },
+          ]
+        : []),
+        ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'site',
+              headerName: 'Site',
+              width: 70,
+            },
+          ]
+        : []),
     ],
-    [theme, pinnedPOIds, togglePin, statusColors]
+    [theme, pinnedPOIds, togglePin, statusColors, procurementSpecialistMap, user?.role]
   );
+  
+console.log(columns.map((c) => c.field));
+
+
+  //saperate page view for supplier & PS
+  const supplierColumns = React.useMemo(
+    () =>
+      columns.filter((col) =>
+        [
+          'pin',
+          'po_number',
+          'status',
+          'supplier_name',
+          'total_value',
+          'line_items',
+          'revision_changes',
+          'buyer_name',
+          'buyer_email',
+          'buyer_phone',
+          'site',
+        ].includes(col.field)
+      ),
+    [columns]
+  );
+
+  const gridColumns = React.useMemo(
+    () => (user?.role === 'SUPPLIER' ? supplierColumns : columns),
+    [user?.role, supplierColumns, columns]
+  );
+
+  const displayedRows = React.useMemo(() => {
+    const rows = pinFilter === 'pinned' ? pinnedPOs : purchaseOrders;
+
+    switch (selectedTab) {
+      case 1: // OPEN PO
+        return rows.filter(
+          (po) => po.status === 'CREATED' || po.status === 'IN_PROGRESS' || po.status === 'APPROVED'
+        );
+
+      case 2: // PASS DELIVERY DATE
+        return rows;
+
+      case 0: // ALL PO
+      default:
+        return rows;
+    }
+  }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
 
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
@@ -528,12 +588,57 @@ const PurchaseOrders: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
-        Purchase Order Listing
-      </Typography>
-      <Typography variant="body2" gutterBottom fontWeight="bold">
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          mb: 1,
+        }}
+      >
+        <Box
+          sx={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            backgroundColor: '#5E7DA5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <ViewListIcon
+            sx={{
+              color: '#fff',
+              fontSize: 18,
+            }}
+          />
+        </Box>
+
+        <Typography
+          sx={{
+            color: '#0B4F88',
+            fontSize: '1.50rem',
+            fontWeight: 400,
+            lineHeight: 1.2,
+          }}
+        >
+          Purchase Order Listing
+        </Typography>
+      </Box>
+
+      <Typography
+        sx={{
+          color: 'black',
+          fontSize: '1rem',
+          fontWeight: 400,
+          mb: 4,
+        }}
+      >
         Updated on {new Date().toLocaleString()}
       </Typography>
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -545,16 +650,21 @@ const PurchaseOrders: React.FC = () => {
       ) : (
         <>
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
-            
             <DataGrid
-              rows={pinFilter === 'pinned' ? pinnedPOs : purchaseOrders}
-              columns={columns}
-              rowCount={pinFilter === 'pinned' ? pinnedPOsRowCount : rowCount}
+              rows={displayedRows}
+              columns={gridColumns}
+              rowCount={
+                selectedTab === 1
+                  ? displayedRows.length
+                  : pinFilter === 'pinned'
+                    ? pinnedPOsRowCount
+                    : rowCount
+              }
               rowHeight={35}
-              getRowClassName={(params) => {
-                // console.log('params: ', params);
-                return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
-              }}
+              // getRowClassName={(params) => {
+              //   // console.log('params: ', params);
+              //   return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
+              // }}
               pagination
               paginationMode="server"
               // rowCountMode="server"
@@ -585,7 +695,7 @@ const PurchaseOrders: React.FC = () => {
                 '& .MuiDataGrid-row': {
                   cursor: 'pointer',
                   '&:hover': {
-                    bgcolor: 'action.hover',
+                    backgroundColor: '#F8EFE7',
                   },
                   fontSize: '0.8rem',
                 },
@@ -594,63 +704,68 @@ const PurchaseOrders: React.FC = () => {
                   justifyContent: 'flex-end',
                   width: '100%',
                 },
+                
               }}
-               slots={{
+              slots={{
                 toolbar: () => (
                   <>
-                  <POFilters
-              searchQuery={searchInput}
-              onSearchChange={handleSearchChange}
-              statusFilter={statusFilter}
-              onStatusChange={(value) => {
-                setStatusFilter(value);
-                setPage(0);
-              }}
-              sortOrder={sortModel.sort_order}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              onFiltersClick={() => setShowAdvancedFilters(true)}
-              pinFilter={pinFilter}
-              onPinFilterChange={(value) => {
-                console.log('Pin filter list:', pinnedPOs);
-                setPinFilter(value);
-                console.log('Pin filter changed to:', value);
-                setPage(0);
-              }}
-              pinnedCount={pinnedPOIds.length}
-            />
-            <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
-              {appliedFilters.length > 0 && (
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {appliedFilters.map((filter) => (
-                    <Chip
-                      key={filter.key}
-                      label={filter.label}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                      onDelete={() => {
-                        const updated = { ...advanceFilters };
-                        delete updated[filter.key];
-                        setAdvancefilters(updated);
-                        setAdvanceTempfilters(updated);
+                    <POFilters
+                      searchQuery={searchInput}
+                      onSearchChange={handleSearchChange}
+                      statusFilter={statusFilter}
+                      onStatusChange={(value) => {
+                        setStatusFilter(value);
+                        setPage(0);
                       }}
+                      sortOrder={sortModel.sort_order}
+                      viewMode={viewMode}
+                      onViewModeChange={setViewMode}
+                      onFiltersClick={() => setShowAdvancedFilters(true)}
+                      pinFilter={pinFilter}
+                      onPinFilterChange={(value) => {
+                        console.log('Pin filter list:', pinnedPOs);
+                        setPinFilter(value);
+                        console.log('Pin filter changed to:', value);
+                        setPage(0);
+                      }}
+                      pinnedCount={pinnedPOIds.length}
+                      selectedTab={selectedTab}
+                      onTabChange={setSelectedTab}
                     />
-                  ))}
+                    <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
+                      {appliedFilters.length > 0 && (
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          {appliedFilters.map((filter) => (
+                            <Chip
+                              key={filter.key}
+                              label={filter.label}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              onDelete={() => {
+                                const updated = { ...advanceFilters };
+                                delete updated[filter.key];
+                                setAdvancefilters(updated);
+                                setAdvanceTempfilters(updated);
+                              }}
+                            />
+                          ))}
 
-                  <Chip
-                    size="small"
-                    label="Clear All"
-                    color="error"
-                    onClick={() => {
-                      setAdvancefilters({});
-                      setAdvanceTempfilters({});
-                    }}
-                  />
-                </Stack>
-              )}
-            </Box>
-                  </>)}}
+                          <Chip
+                            size="small"
+                            label="Clear All"
+                            color="error"
+                            onClick={() => {
+                              setAdvancefilters({});
+                              setAdvanceTempfilters({});
+                            }}
+                          />
+                        </Stack>
+                      )}
+                    </Box>
+                  </>
+                ),
+              }}
             />
           </Box>
         </>
@@ -667,7 +782,7 @@ const PurchaseOrders: React.FC = () => {
             // top: '25%',
             // left: '68%',
             // transform: 'translate(-50%, -20%)',
-            // borderRadius: 2,
+            // borderRadius: 1,
             // boxShadow: 24,
           },
         }}

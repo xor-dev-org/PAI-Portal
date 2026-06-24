@@ -177,7 +177,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                     <ListItemButton 
                       selected={selectedConversation?.id === conversation.id} 
                       onClick={() => handleSelectConversation(conversation.id)}
-                      sx={{ borderRadius: 2, mx: 1 }}
+                      sx={{ borderRadius: 1, mx: 1 }}
                     >
                       <ListItemAvatar>
                         <Badge badgeContent={conversation.unread || null} color="primary">
@@ -221,7 +221,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                     sx={{ 
                       maxWidth: '75%', 
                       p: message.fileType === 'image' ? 0.75 : 1.25, // Tighter padding for images
-                      borderRadius: 2, 
+                      borderRadius: 1, 
                       bgcolor: message.sender === 'me' ? theme.palette.primary.main : theme.palette.action.hover, 
                       color: message.sender === 'me' ? theme.palette.primary.contrastText : 'inherit',
                       overflow: 'hidden'
@@ -234,7 +234,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                           component="img" 
                           src={message.fileUrl} 
                           alt={message.fileName} 
-                          sx={{ maxWidth: '100%', maxHeight: 240, borderRadius: 1.5, objectFit: 'cover', display: 'block' }} 
+                          sx={{ maxWidth: '100%', maxHeight: 240, borderRadius: 1, objectFit: 'cover', display: 'block' }} 
                         />
                         {/* Render caption text beneath image if it exists */}
                         {message.text && message.text !== 'Sent an image' && (

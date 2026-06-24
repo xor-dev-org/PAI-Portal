@@ -27,4 +27,19 @@ export const userService = {
     console.log(`Updated pinned rows for user ${JSON.stringify(response.data)}`);
     return response.data;
   },
+
+  getLinePinnedRows: async (userId: string): Promise<string[]> => {
+    const response = await apiClient.get<{ line_pinned_rows: string[] }>(
+      `/user-pref/line-pinned-rows?user_id=${userId}`
+    );
+    return response.data.line_pinned_rows;
+  },
+
+  updateLinePinnedRows: async (userId: string, linePinnedRows: string[]): Promise<{ line_pinned_rows: string[] }> => {
+    const response = await apiClient.put<{ line_pinned_rows: string[] }>('/user-pref/line-pinned-rows', {
+      user_id: userId,
+      line_pinned_rows: linePinnedRows,
+    });
+    return response.data;
+  },
 };

@@ -8,6 +8,7 @@ export enum UserRole {
 export interface User {
   id: string;
   name: string;
+  phone?: string;
   email: string;
   role: UserRole;
   supplier_number?: string;
@@ -161,9 +162,17 @@ export interface PurchaseOrder {
 export interface POActionRequest {
   action: string;
   line_item_id: string;
+  line_item_ids?: string[];
   notes?: string;
   move_in_date?: string;
   move_out_date?: string;
+  splits?: Array<{ quantity: number; delivery_date: string }>;
+  proposed_quantity?: number | null;
+  proposed_unit_price?: number | null;
+  proposed_delivery_date?: string | null;
+  concession_reason?: string;
+  concession_description?: string;
+  document_id?: string;
 }
 
 export interface PODropdownConfig {
