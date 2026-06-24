@@ -111,3 +111,11 @@ export interface SupplierFilters extends PaginationParams {
   category?: string;
   searchTerm?: string;
 }
+
+
+export interface ACSMessage {
+  id: string;
+  content: string;
+  senderId: string;
+  createdOn: Date;
+}

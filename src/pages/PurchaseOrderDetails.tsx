@@ -120,6 +120,54 @@ const PurchaseOrderDetails: React.FC = () => {
     void reloadAll();
   }, [reloadAll]);
 
+  useEffect(() => {
+    const publishChatContext = async () => {
+      if (!po || !user?.email) {
+        return;
+      }
+
+      const fromEmail = user.email;
+      const fromName = user.name || user.email;
+
+      let toEmail = po.supplier_email || '';
+      let toName = po.supplier_name || 'Supplier';
+
+      if (supplier) {
+        const specialists = await userService.getUsersByRole('PROCUREMENT_SPECIALIST');
+        const owner = specialists.find((item) => item.id === po.procurement_specialist_id);
+
+        if (!owner?.email) {
+          return;
+        }
+
+        toEmail = owner.email;
+        toName = owner.name;
+      }
+
+      if (!toEmail) {
+        return;
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('chat-context', {
+          detail: {
+            poNumber: po.po_number,
+            fromEmail,
+            fromName,
+            toEmail,
+            toName,
+          },
+        })
+      );
+    };
+
+    void publishChatContext();
+
+    return () => {
+      window.dispatchEvent(new Event('clear-chat-context'));
+    };
+  }, [po?.id, po?.po_number, po?.procurement_specialist_id, po?.supplier_email, po?.supplier_name, supplier, user?.email, user?.name]);
+
   const lineItems = po?.line_items || [];
   const hasSelectedSupplierLineRows = selectedLineIds.length > 0;
 

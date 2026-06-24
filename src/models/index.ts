@@ -293,3 +293,11 @@ export interface DelegationListResponse {
   total: number;
   data: Delegation[];
 }
+
+
+export interface AIChatResponse {
+  generated_query?: any;
+  records_found?: number;
+  data?: any[];
+  answer: string;
+}
