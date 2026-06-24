@@ -68,6 +68,11 @@ export interface LineItem {
   updated_material_no?: string;
   updated_description?: string;
   updated_net_value?: number;
+  supplier_confirmation_date?: string;
+  recommendation?: string;
+  exception_type?: string;
+  mrp_action_required?: boolean;
+  concession?: string;
   documents?: string[];
   line_status?: string;
   default_expanded?: boolean;

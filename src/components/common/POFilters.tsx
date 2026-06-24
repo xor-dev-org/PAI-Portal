@@ -28,6 +28,7 @@ interface POFiltersProps {
   availableSites: string[];
   selectedTab: number;
   onTabChange: (tab: number) => void;
+  userRole?: string;
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
@@ -46,6 +47,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   // availableSites,
   selectedTab,
   onTabChange,
+  userRole,
 }) => {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -90,10 +92,14 @@ const POFilters: React.FC<POFiltersProps> = ({
             },
           }}
         >
-          <Tab label="ALL PO" />
-          <Tab label="OPEN PO" />
-          <Tab label="PO TO REVIEW" />
-          <Tab label="MRP EXCEPTIONS" />
+          <Tab label="OPEN PO" value={0} />
+
+          {/* Actual old OPEN PO tab kept in code but hidden for now */}
+          <Tab label="OPEN PO" value={1} sx={{ display: 'none' }} />
+
+          {userRole !== 'SUPPLIER' && <Tab label="PO TO REVIEW" value={2} />}
+
+          {userRole !== 'SUPPLIER' && <Tab label="MRP EXCEPTION" value={3} />}
         </Tabs>
 
         {/* RIGHT SIDE - ALL FILTERS */}

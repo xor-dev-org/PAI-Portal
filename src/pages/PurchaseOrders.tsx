@@ -205,6 +205,12 @@ const PurchaseOrders: React.FC = () => {
     navigate(`/purchase-orders/${po.id}`);
   };
 
+  const handleGridRowClick = (row: any) => {
+    const poId = row.po_id || row.id;
+
+    navigate(`/purchase-orders/${poId}`);
+  };
+
   const appliedFilters = [
     advanceFilters.po_number && {
       key: 'po_number',
@@ -348,14 +354,29 @@ const PurchaseOrders: React.FC = () => {
       >,
     []
   );
-  console.log("role:", user?.role);
+  console.log('role:', user?.role);
+
+  //format currency
+  const formatCurrency = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return '--';
+
+    const numericValue = Number(value);
+
+    if (Number.isNaN(numericValue)) return '--';
+
+    return `$${numericValue.toLocaleString()}`;
+  };
+
+  const hasCellValue = (value: unknown) =>
+  value !== null && value !== undefined && value !== '';
+
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
       {
         field: 'pin',
         headerName: 'Pin',
-        width: 60,
+        width: 40,
         sortable: false,
         filterable: false,
         renderCell: (params) => (
@@ -409,14 +430,14 @@ const PurchaseOrders: React.FC = () => {
             {
               field: 'supplier_name',
               headerName: 'Supplier',
-              width: 120,
+              width: 100,
             },
           ]
         : []),
       {
         field: 'status',
         headerName: 'PO Status',
-        width: 140,
+        width: 130,
         renderCell: (params) => (
           <Chip
             variant="outlined"
@@ -472,7 +493,7 @@ const PurchaseOrders: React.FC = () => {
       {
         field: 'supplier_email',
         headerName: 'Supplier Email',
-        width: 150,
+        width: 180,
       },
 
       // {
@@ -522,7 +543,7 @@ const PurchaseOrders: React.FC = () => {
             },
           ]
         : []),
-        ...(user?.role === 'SUPPLIER'
+      ...(user?.role === 'SUPPLIER'
         ? [
             {
               field: 'site',
@@ -534,9 +555,345 @@ const PurchaseOrders: React.FC = () => {
     ],
     [theme, pinnedPOIds, togglePin, statusColors, procurementSpecialistMap, user?.role]
   );
-  
-console.log(columns.map((c) => c.field));
 
+  console.log(columns.map((c) => c.field));
+
+  const poToReviewColumns: GridColDef[] = React.useMemo(
+    () => [
+      {
+        field: 'pin',
+        headerName: 'Pin',
+        width: 30,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const poId = params.row.po_id;
+
+          const isPinned = pinnedPOIds.includes(poId);
+
+          return (
+            <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePin(poId);
+                }}
+                sx={{
+                  color: isPinned ? 'primary.main' : 'action.disabled',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                {isPinned ? (
+                  <PushPinIcon sx={{ fontSize: '1.25rem' }} />
+                ) : (
+                  <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          );
+        },
+      },
+      {
+        field: 'po_number',
+        headerName: 'PO Number',
+        width: 100,
+        renderCell: (params) => (
+          <Typography
+            fontWeight="bold"
+            height="100%"
+            alignContent="center"
+            fontSize="0.8rem"
+            color={theme.palette.primary.light}
+          >
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'line_number',
+        headerName: 'PO Line',
+        width: 50,
+      },
+      {
+        field: 'material_code',
+        headerName: 'Material No',
+        width: 110,
+      },
+      {
+        field: 'status',
+        headerName: 'Status',
+        width: 120,
+        renderCell: (params) => (
+          <Chip
+            variant="outlined"
+            label={params.value ? params.value.replace(/_/g, ' ') : '--'}
+            color={statusColors[params.value as PurchaseOrderStatus] || 'default'}
+            size="small"
+          />
+        ),
+      },
+      {
+        field: 'description',
+        headerName: 'Short Description',
+        width: 150,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'quantity',
+        headerName: 'Qty',
+        width: 60,
+        renderCell: (params) => params.value ?? '--',
+      },
+      {
+        field: 'updated_quantity',
+        headerName: 'Supplier confirmed Qty',
+        width: 60,
+        renderCell: (params) => params.value ?? '--',
+      },
+      {
+        field: 'unit_price',
+        headerName: 'Unit Price',
+        width: 70,
+        renderCell: (params) => formatCurrency(params.value),
+      },
+      {
+        field: 'updated_unit_price',
+        headerName: 'Updated Unit Price',
+        width: 70,
+        renderCell: (params) => formatCurrency(params.value),cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+      },
+      {
+        field: 'net_value',
+        headerName: 'Total Value',
+        width: 80,
+        renderCell: (params) => formatCurrency(params.value),
+      },
+      {
+        field: 'updated_net_value',
+        headerName: 'Updated Total Value',
+        width: 80,
+        renderCell: (params) => formatCurrency(params.value),cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+      },
+      {
+        field: 'required_in_house_date',
+        headerName: 'Need By Date',
+        width: 100,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'updated_delivery_date',
+        headerName: 'Revised Date',
+        width: 100,
+        renderCell: (params) => params.value || '--',cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+      },
+      {
+        field: 'supplier_confirmation_date',
+        headerName: 'Supplier Confirmation Date',
+        width: 100,
+        renderCell: (params) => params.value || '--',cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+      },
+      {
+        field: 'concession',
+        headerName: 'Concession',
+        width: 100,
+        renderCell: (params) => params.value || '--',cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+      },
+    ],
+    [pinnedPOIds, togglePin, theme, statusColors]
+  );
+
+  //MRP exception coulumns
+  const mrpExceptionColumns: GridColDef[] = React.useMemo(
+    () => [
+      {
+        field: 'pin',
+        headerName: 'Pin',
+        width: 40,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const poId = params.row.po_id;
+          const isPinned = pinnedPOIds.includes(poId);
+
+          return (
+            <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePin(poId);
+                }}
+                sx={{
+                  color: isPinned ? 'primary.main' : 'action.disabled',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                {isPinned ? (
+                  <PushPinIcon sx={{ fontSize: '1.25rem' }} />
+                ) : (
+                  <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          );
+        },
+      },
+      {
+        field: 'po_number',
+        headerName: 'PO Number',
+        width: 100,
+        renderCell: (params) => (
+          <Typography
+            fontWeight="bold"
+            height="100%"
+            alignContent="center"
+            fontSize="0.8rem"
+            color={theme.palette.primary.light}
+          >
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'line_number',
+        headerName: 'Line Item',
+        width: 50,
+      },
+      {
+        field: 'description',
+        headerName: 'Short Description',
+        width: 150,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'supplier_name',
+        headerName: 'Supplier',
+        width: 90,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'status',
+        headerName: 'PO Status',
+        width: 120,
+        renderCell: (params) => (
+          <Chip
+            variant="outlined"
+            label={params.value ? params.value.replace(/_/g, ' ') : '--'}
+            color={statusColors[params.value as PurchaseOrderStatus] || 'default'}
+            size="small"
+          />
+        ),
+      },
+      {
+        field: 'source_system',
+        headerName: 'ERP',
+        width: 70,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'net_value',
+        headerName: 'Line Item Value',
+        width: 80,
+        renderCell: (params) => formatCurrency(params.value),
+      },
+      {
+        field: 'recommendation',
+        headerName: 'Recommendations',
+        width: 160,
+        renderCell: (params) => (
+          <Typography
+            fontWeight="bold"
+            height="100%"
+            alignContent="center"
+            fontSize="0.8rem"
+            color={theme.palette.primary.light}
+          >
+            {params.value || '--'}
+          </Typography>
+        ),
+      },
+      {
+        field: 'quantity',
+        headerName: 'Qty',
+        width: 50,
+        renderCell: (params) => params.value ?? '--',
+      },
+      {
+        field: 'updated_quantity',
+        headerName: 'Updated Qty',
+        width: 60,
+        renderCell: (params) =>
+          params.value !== null && params.value !== undefined ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'required_in_house_date',
+        headerName: 'Need By Date',
+        width: 100,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'updated_delivery_date',
+        headerName: 'Revised Date',
+        width: 100,
+        renderCell: (params) =>
+          params.value ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'revision_changes',
+        headerName: 'Rev.',
+        width: 50,
+        renderCell: (params) => params.value ?? '--',
+      },
+      {
+        field: 'site',
+        headerName: 'Site',
+        width: 60,
+        renderCell: (params) => params.value || '--',
+      },
+      // {
+      //   field: 'action',
+      //   headerName: 'Action',
+      //   width: 90,
+      //   sortable: false,
+      //   filterable: false,
+      //   renderCell: () => (
+      //     <Typography height="100%" alignContent="center" fontSize="0.8rem" color="text.secondary">
+      //       ⋮
+      //     </Typography>
+      //   ),
+      // },
+    ],
+    [pinnedPOIds, togglePin, theme, statusColors]
+  );
 
   //saperate page view for supplier & PS
   const supplierColumns = React.useMemo(
@@ -564,6 +921,19 @@ console.log(columns.map((c) => c.field));
     [user?.role, supplierColumns, columns]
   );
 
+  const currentColumns = React.useMemo(() => {
+    switch (selectedTab) {
+      case 2: // PO TO REVIEW
+        return poToReviewColumns;
+
+      case 3: // MRP EXCEPTION
+        return mrpExceptionColumns;
+
+      default:
+        return gridColumns;
+    }
+  }, [selectedTab, poToReviewColumns, mrpExceptionColumns, gridColumns]);
+
   const displayedRows = React.useMemo(() => {
     const rows = pinFilter === 'pinned' ? pinnedPOs : purchaseOrders;
 
@@ -581,6 +951,93 @@ console.log(columns.map((c) => c.field));
         return rows;
     }
   }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
+
+  //Show POtoreview tabs data
+  const flattenedLineItems = React.useMemo(() => {
+    return purchaseOrders.flatMap((po) =>
+      po.line_items.map((item) => ({
+        id: `${po.id}-${item.id}`,
+
+        // PO fields
+        po_id: po.id,
+        po_number: po.po_number,
+        supplier_name: po.supplier_name,
+        supplier_id: po.supplier_id,
+        supplier_email: po.supplier_email,
+        site: po.site,
+        status: po.status,
+        source_system: po.source_system,
+        revision_changes: po.revision_changes,
+        mrp_exceptions: po.mrp_exceptions,
+        delivery_date: po.delivery_date,
+        currency: po.currency,
+
+        // Line Item fields
+        line_id: item.id,
+        line_number: item.line_number,
+        material_code: item.material_code,
+        description: item.description,
+
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        net_value: item.net_value,
+
+        updated_quantity: item.updated_quantity,
+        updated_unit_price: item.updated_unit_price,
+        updated_net_value: item.updated_net_value,
+
+        required_in_house_date: item.required_in_house_date,
+        updated_delivery_date: item.updated_delivery_date,
+
+        supplier_confirmation_date: item.supplier_confirmation_date,
+        recommendation: item.recommendation,
+        exception_type: item.exception_type,
+        mrp_action_required: item.mrp_action_required,
+        concession: item.concession,
+
+        // For now we are using PO status in PO review tab
+        line_status: po.status,
+      }))
+    );
+  }, [purchaseOrders]);
+
+  //MRP exception rows
+  const mrpExceptionRows = React.useMemo(() => {
+    return flattenedLineItems.filter((row) => {
+      const hasRecommendation =
+        row.recommendation !== null &&
+        row.recommendation !== undefined &&
+        row.recommendation !== '';
+
+      const hasMrpAction = row.mrp_action_required === true;
+
+      return hasRecommendation || hasMrpAction;
+    });
+  }, [flattenedLineItems]);
+
+  console.log('MRP Exception Rows:', mrpExceptionRows.length);
+  console.log('MRP Exception Sample:', mrpExceptionRows[0]);
+
+  const currentRows = React.useMemo(() => {
+    switch (selectedTab) {
+      case 2: {
+        // PO TO REVIEW
+        const inProgressRows = flattenedLineItems.filter((row) => row.status === 'IN_PROGRESS');
+
+        return pinFilter === 'pinned'
+          ? inProgressRows.filter((row) => pinnedPOIds.includes(row.po_id))
+          : inProgressRows;
+      }
+
+      case 3: // MRP EXCEPTION
+        return pinFilter === 'pinned'
+          ? mrpExceptionRows.filter((row) => pinnedPOIds.includes(row.po_id))
+          : mrpExceptionRows;
+
+      default:
+        return displayedRows;
+    }
+  }, [selectedTab, flattenedLineItems, mrpExceptionRows, displayedRows, pinFilter, pinnedPOIds]);
 
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
@@ -651,14 +1108,16 @@ console.log(columns.map((c) => c.field));
         <>
           <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
             <DataGrid
-              rows={displayedRows}
-              columns={gridColumns}
+              rows={currentRows}
+              columns={currentColumns}
               rowCount={
-                selectedTab === 1
-                  ? displayedRows.length
-                  : pinFilter === 'pinned'
-                    ? pinnedPOsRowCount
-                    : rowCount
+                selectedTab === 2 || selectedTab === 3
+                  ? currentRows.length
+                  : selectedTab === 1
+                    ? displayedRows.length
+                    : pinFilter === 'pinned'
+                      ? pinnedPOsRowCount
+                      : rowCount
               }
               rowHeight={35}
               // getRowClassName={(params) => {
@@ -675,22 +1134,31 @@ console.log(columns.map((c) => c.field));
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               // hideFooterSelectedRowCount
-              sortingMode={pinFilter === 'pinned' ? 'client' : 'server'}
+              sortingMode={
+                selectedTab === 2 || selectedTab === 3 || pinFilter === 'pinned'
+                  ? 'client'
+                  : 'server'
+              }
               onSortModelChange={(model) => {
                 console.log('sort model: ', model);
-                console.log('sort model state: ', sortModel);
-                if (pinFilter === 'all') {
-                  setSortModel({
-                    sort_by: model[0]?.field,
-                    // sort_order: (sortModel.sort_order == 'asc' || sortModel.sort_order == 'desc') ? sortModel.sort_order : 'asc',
-                    sort_order: sortModel.sort_order == 'asc' ? 'desc' : 'asc',
-                  });
-                  // setSortBy(model[0]?.field || '');
-                  // setSortOrder(model[0]?.sort as 'asc' | 'desc' || 'asc');
-                  setPage(0);
+
+                // PO TO REVIEW and MRP EXCEPTION are client-side sorted for now
+                if (selectedTab === 2 || selectedTab === 3) {
+                  return;
                 }
+
+                if (pinFilter === 'pinned') {
+                  return;
+                }
+
+                setSortModel({
+                  sort_by: model[0]?.field,
+                  sort_order: (model[0]?.sort as 'asc' | 'desc') || 'asc',
+                });
+
+                setPage(0);
               }}
-              onRowClick={(params) => handlePOClick(params.row as PurchaseOrder)}
+              onRowClick={(params) => handleGridRowClick(params.row)}
               sx={{
                 '& .MuiDataGrid-row': {
                   cursor: 'pointer',
@@ -704,7 +1172,10 @@ console.log(columns.map((c) => c.field));
                   justifyContent: 'flex-end',
                   width: '100%',
                 },
-                
+                '& .changed-cell': {
+                  color: theme.palette.primary.light,
+                  fontWeight: 700,
+                },
               }}
               slots={{
                 toolbar: () => (
@@ -729,6 +1200,7 @@ console.log(columns.map((c) => c.field));
                         setPage(0);
                       }}
                       pinnedCount={pinnedPOIds.length}
+                      userRole={user?.role}
                       selectedTab={selectedTab}
                       onTabChange={setSelectedTab}
                     />
