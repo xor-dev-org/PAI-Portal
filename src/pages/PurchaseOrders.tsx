@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -37,7 +37,6 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { useDebounce } from '@/hooks/useDebounce';
 import { usePagination } from '@/hooks/usePagination';
 import { format } from 'date-fns';
 import { logger } from '@/services/logger';
@@ -57,11 +56,15 @@ const PurchaseOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [procurementSpecialists, setProcurementSpecialists] = useState<User[]>([]);
 
+  const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
+  const [rowCount, setRowCount] = useState(0);
+
   // Filter states
   const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // const debouncedSearchQuery = useDebounce(searchInput, 150);
+  // useEffect(() => {
+  //   setPage(0);
+  // }, [debouncedSearchQuery, setPage]);
 
   const [statusFilter, setStatusFilter] = useState('');
   // const [sortBy, setSortBy] = useState('');
@@ -70,10 +73,6 @@ const PurchaseOrders: React.FC = () => {
     sort_by: string | undefined;
     sort_order: 'asc' | 'desc';
   }>({ sort_by: '', sort_order: 'desc' });
-
-  const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
-  const [rowCount, setRowCount] = useState(0);
-  const debouncedSearchQuery = useDebounce(searchQuery, 600);
 
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -127,7 +126,7 @@ const PurchaseOrders: React.FC = () => {
         status: statusFilter,
         sort_by: sortModel.sort_by,
         sort_order: sortModel.sort_order,
-        search: searchQuery,
+        search: searchInput,
         ...advanceFilters,
       };
 
@@ -148,8 +147,8 @@ const PurchaseOrders: React.FC = () => {
       console.log('------------------Fetched pinned PO List from server :', pinnedPOList.data);
 
       setPinnedPOs(pinnedPOList.data);
-      console.log('Current User:', user);
-      console.log('Pinned POs Returned:', pinnedPOList.data);
+      // console.log('Current User:', user);
+      // console.log('Pinned POs Returned:', pinnedPOList.data);
       setPinnedPOsRowCount(pinnedPOList.total);
       console.log('Final filters:', filters);
 
@@ -157,7 +156,7 @@ const PurchaseOrders: React.FC = () => {
         page: filters.page,
         pageSize: filters.page_size,
         status: filters.status,
-        search: debouncedSearchQuery,
+        search: searchInput,
         advanceFilters: Object.keys(advanceFilters).length,
       });
 
@@ -166,7 +165,7 @@ const PurchaseOrders: React.FC = () => {
       } else if (user?.role === 'PROCUREMENT_SPECIALIST') {
         filters.procurement_specialist_id = user.id;
       }
-
+      //console.log("Filters Sent:", filters);
       const response = await purchaseOrderService.getPOList(filters);
       setPurchaseOrders(response.data);
       setRowCount(response.total);
@@ -191,19 +190,19 @@ const PurchaseOrders: React.FC = () => {
     pageSize,
     statusFilter,
     sortModel,
-    debouncedSearchQuery,
+    searchInput,
     user,
     advanceFilters,
     pinFilter,
   ]);
 
   useEffect(() => {
-    fetchPurchaseOrders();
+     fetchPurchaseOrders();
   }, [fetchPurchaseOrders]);
 
-  const handlePOClick = (po: PurchaseOrder) => {
-    navigate(`/purchase-orders/${po.id}`);
-  };
+  // const handlePOClick = (po: PurchaseOrder) => {
+  //   navigate(`/purchase-orders/${po.id}`);
+  // };
 
   const handleGridRowClick = (row: any) => {
     const poId = row.po_id || row.id;
@@ -276,29 +275,25 @@ const PurchaseOrders: React.FC = () => {
     }
   };
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
 
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
+const handleSearchChange = useCallback(
+  (value: string) => {
+    setSearchInput(value);
+    setPage(0);
+  },
+  [setPage]
+);
 
-      searchDebounceRef.current = setTimeout(() => {
-        setSearchQuery(value);
-        setPage(0);
-      }, 1000);
-    },
-    [setPage]
-  );
+  
 
-  useEffect(() => {
-    return () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-    };
-  }, []);
+
+  // useEffect(() => {
+  //   return () => {
+  //     if (searchDebounceRef.current) {
+  //       clearTimeout(searchDebounceRef.current);
+  //     }
+  //   };
+  // }, []);
 
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
     key: K,
@@ -322,7 +317,7 @@ const PurchaseOrders: React.FC = () => {
 
   const handleApplyAdvanceFilters = () => {
     // TODO: Apply filters to the purchase orders list
-    console.log('Applying filters:', advanceTempFilters);
+    // console.log('Applying filters:', advanceTempFilters);
     setPage(0);
     setAdvancefilters({ ...advanceTempFilters });
     setShowAdvancedFilters(false);
@@ -354,7 +349,7 @@ const PurchaseOrders: React.FC = () => {
       >,
     []
   );
-  console.log('role:', user?.role);
+  // console.log('role:', user?.role);
 
   //format currency
   const formatCurrency = (value: unknown) => {
@@ -556,7 +551,7 @@ const PurchaseOrders: React.FC = () => {
     [theme, pinnedPOIds, togglePin, statusColors, procurementSpecialistMap, user?.role]
   );
 
-  console.log(columns.map((c) => c.field));
+  // console.log(columns.map((c) => c.field));
 
   const poToReviewColumns: GridColDef[] = React.useMemo(
     () => [
@@ -1015,8 +1010,8 @@ const PurchaseOrders: React.FC = () => {
     });
   }, [flattenedLineItems]);
 
-  console.log('MRP Exception Rows:', mrpExceptionRows.length);
-  console.log('MRP Exception Sample:', mrpExceptionRows[0]);
+  // console.log('MRP Exception Rows:', mrpExceptionRows.length);
+  // console.log('MRP Exception Sample:', mrpExceptionRows[0]);
 
   const currentRows = React.useMemo(() => {
     switch (selectedTab) {
@@ -1038,6 +1033,84 @@ const PurchaseOrders: React.FC = () => {
         return displayedRows;
     }
   }, [selectedTab, flattenedLineItems, mrpExceptionRows, displayedRows, pinFilter, pinnedPOIds]);
+
+  const ToolbarComponent = React.useCallback(
+    () => (
+      <>
+        <POFilters
+          searchInput={searchInput}
+          onSearchChange={handleSearchChange}
+          statusFilter={statusFilter}
+          onStatusChange={(value) => {
+            setStatusFilter(value);
+            setPage(0);
+          }}
+          sortOrder={sortModel.sort_order}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          onFiltersClick={() => setShowAdvancedFilters(true)}
+          pinFilter={pinFilter}
+          onPinFilterChange={(value) => {
+            console.log('Pin filter list:', pinnedPOs);
+            setPinFilter(value);
+            console.log('Pin filter changed to:', value);
+            setPage(0);
+          }}
+          pinnedCount={pinnedPOIds.length}
+          userRole={user?.role}
+          selectedTab={selectedTab}
+          onTabChange={setSelectedTab}
+        />
+
+        <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
+          {appliedFilters.length > 0 && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {appliedFilters.map((filter) => (
+                <Chip
+                  key={filter.key}
+                  label={filter.label}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  onDelete={() => {
+                    const updated = { ...advanceFilters };
+                    delete updated[filter.key];
+                    setAdvancefilters(updated);
+                    setAdvanceTempfilters(updated);
+                  }}
+                />
+              ))}
+
+              <Chip
+                size="small"
+                label="Clear All"
+                color="error"
+                onClick={() => {
+                  setAdvancefilters({});
+                  setAdvanceTempfilters({});
+                }}
+              />
+            </Stack>
+          )}
+        </Box>
+      </>
+    ),
+    [
+      searchInput,
+      handleSearchChange,
+      statusFilter,
+      sortModel.sort_order,
+      viewMode,
+      pinFilter,
+      pinnedPOs,
+      pinnedPOIds.length,
+      user?.role,
+      selectedTab,
+      appliedFilters,
+      advanceFilters,
+      setPage,
+    ]
+  );
 
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
@@ -1140,7 +1213,7 @@ const PurchaseOrders: React.FC = () => {
                   : 'server'
               }
               onSortModelChange={(model) => {
-                console.log('sort model: ', model);
+                // console.log('sort model: ', model);
 
                 // PO TO REVIEW and MRP EXCEPTION are client-side sorted for now
                 if (selectedTab === 2 || selectedTab === 3) {
@@ -1178,65 +1251,7 @@ const PurchaseOrders: React.FC = () => {
                 },
               }}
               slots={{
-                toolbar: () => (
-                  <>
-                    <POFilters
-                      searchQuery={searchInput}
-                      onSearchChange={handleSearchChange}
-                      statusFilter={statusFilter}
-                      onStatusChange={(value) => {
-                        setStatusFilter(value);
-                        setPage(0);
-                      }}
-                      sortOrder={sortModel.sort_order}
-                      viewMode={viewMode}
-                      onViewModeChange={setViewMode}
-                      onFiltersClick={() => setShowAdvancedFilters(true)}
-                      pinFilter={pinFilter}
-                      onPinFilterChange={(value) => {
-                        console.log('Pin filter list:', pinnedPOs);
-                        setPinFilter(value);
-                        console.log('Pin filter changed to:', value);
-                        setPage(0);
-                      }}
-                      pinnedCount={pinnedPOIds.length}
-                      userRole={user?.role}
-                      selectedTab={selectedTab}
-                      onTabChange={setSelectedTab}
-                    />
-                    <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
-                      {appliedFilters.length > 0 && (
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          {appliedFilters.map((filter) => (
-                            <Chip
-                              key={filter.key}
-                              label={filter.label}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              onDelete={() => {
-                                const updated = { ...advanceFilters };
-                                delete updated[filter.key];
-                                setAdvancefilters(updated);
-                                setAdvanceTempfilters(updated);
-                              }}
-                            />
-                          ))}
-
-                          <Chip
-                            size="small"
-                            label="Clear All"
-                            color="error"
-                            onClick={() => {
-                              setAdvancefilters({});
-                              setAdvanceTempfilters({});
-                            }}
-                          />
-                        </Stack>
-                      )}
-                    </Box>
-                  </>
-                ),
+                toolbar: ToolbarComponent,
               }}
             />
           </Box>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, TextField, Tooltip, Paper, InputAdornment, Button, Typography, IconButton, useTheme,Divider, Tabs, Tab} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -13,7 +13,7 @@ import {
 } from '@mui/x-data-grid';
 
 interface POFiltersProps {
-  searchQuery: string;
+  searchInput: string;
   onSearchChange: (value: string) => void;
   statusFilter: string;
   onStatusChange: (value: string) => void;
@@ -32,7 +32,7 @@ interface POFiltersProps {
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
-  searchQuery,
+  searchInput,
   onSearchChange,
   statusFilter: _statusFilter,
   onStatusChange: _onStatusChange,
@@ -53,8 +53,20 @@ const POFilters: React.FC<POFiltersProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [localSearchInput, setLocalSearchInput] = useState(searchInput);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      onSearchChange(localSearchInput);
+    }, 1000);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearchInput, onSearchChange]);
+
   // It stays expanded if focused OR if there is text typed inside it
-  const isExpanded = isFocused || searchQuery.length > 0;
+  const isExpanded = isFocused || localSearchInput.length > 0;
+  console.log('POFilters Rendered');
 
   return (
     <Paper
@@ -141,8 +153,8 @@ const POFilters: React.FC<POFiltersProps> = ({
                 size="small"
                 variant="outlined"
                 placeholder={isExpanded ? 'Search PO Number, Supplier...' : ''}
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
+                value={localSearchInput}
+                onChange={(e) => setLocalSearchInput(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 InputProps={{
@@ -151,13 +163,14 @@ const POFilters: React.FC<POFiltersProps> = ({
                       <SearchIcon color={isExpanded ? 'primary' : 'action'} />
                     </InputAdornment>
                   ),
-                  endAdornment: searchQuery ? (
+                  endAdornment: localSearchInput ? (
                     <InputAdornment position="end">
                       <IconButton
                         size="small"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onSearchChange('');
+                          setLocalSearchInput('');
+                          //onSearchChange('');
                         }}
                       >
                         <ClearIcon fontSize="small" />
@@ -273,4 +286,4 @@ const POFilters: React.FC<POFiltersProps> = ({
   );
 };
 
-export default POFilters;
+export default React.memo(POFilters);

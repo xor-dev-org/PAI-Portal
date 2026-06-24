@@ -39,6 +39,7 @@ export const purchaseOrderService = {
 
     const url = `/po?${params.toString()}`;
     const startTime = performance.now();
+    console.log("API Params:", params.toString());
     const response = await apiClient.get<POListResponse>(url);
     logger.info('Purchase order API call completed', {
       url,
