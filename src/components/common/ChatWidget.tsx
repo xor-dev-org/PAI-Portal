@@ -127,6 +127,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   const [threadClient, setThreadClient] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isThinking, setIsThinking] = useState<boolean>(false);
+  const [isInitializingACS, setIsInitializingACS] = useState(false);
 
   // Auto-scroll to the bottom whenever a new message lands or chat changes
   const scrollToBottom = () => {
@@ -306,6 +307,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   };
 
   const handleSend = async () => {
+
+    if (isInitializingACS) {
+        return;
+    }
+
     const trimmed = draft.trim();
 
     if (
@@ -320,7 +326,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
       }
 
       await threadClient.sendMessage({
-        content: trimmed
+          content: trimmed
       });
 
       setDraft('');
@@ -398,6 +404,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   };
 
   const initializeACS = async (context: ChatContext) => {
+    setIsInitializingACS(true);
+    try{
     const currentUser = authService.getCurrentUser();
 
     if (!currentUser?.email) {
@@ -435,6 +443,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
         sender: isCurrentUserMessage(msg, userId, currentUser.name) ? 'me' : 'other',
         time: msg.createdOn ? formatTime(new Date(msg.createdOn)) : '',
       };
+      const text = msg.content?.message?.trim();
+
+      if (!text) {
+          continue;
+      }
 
       if (!seenAcsMessageIdsRef.current.has(historyItem.id)) {
         seenAcsMessageIdsRef.current.add(historyItem.id);
@@ -475,6 +488,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
       client.on('chatMessageReceived', messageHandlerRef.current);
     }
+      } finally {
+    setIsInitializingACS(false);
+  }
   };
 
   useEffect(() => {
@@ -739,18 +755,27 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                   placeholder={selectedFile ? "Add a caption..." : `Message ${selectedConversation?.name || ''}...`} 
                   value={draft} 
                   onChange={(event) => setDraft(event.target.value)} 
-                  onKeyDown={(event) => { 
-                    if (event.key === 'Enter' && !event.shiftKey) { 
-                      event.preventDefault(); 
-                      handleSend(); 
-                    } 
-                  }} 
+                  // disabled={isInitializingACS}
+                  onKeyDown={(event) => {
+                      if (isInitializingACS) {
+                          event.preventDefault();
+                          return;
+                      }
+
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          handleSend();
+                      }
+                  }}
                 />
                 
                 <IconButton 
                   color="primary" 
                   onClick={handleSend} 
-                  disabled={!draft.trim() && !selectedFile} 
+                  disabled={
+                      isInitializingACS ||
+                      (!draft.trim() && !selectedFile)
+                  }
                   aria-label="Send message"
                 >
                   <Send />
