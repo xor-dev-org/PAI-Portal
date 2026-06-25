@@ -378,7 +378,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
         setIsThinking(false);
 
         typeWriterResponse(
-          response.answer
+          response.output
         );
 
       } catch {

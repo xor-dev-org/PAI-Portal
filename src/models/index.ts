@@ -296,8 +296,5 @@ export interface DelegationListResponse {
 
 
 export interface AIChatResponse {
-  generated_query?: any;
-  records_found?: number;
-  data?: any[];
-  answer: string;
+  output: string;
 }

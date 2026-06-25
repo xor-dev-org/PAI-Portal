@@ -3,13 +3,13 @@ import { AIChatResponse } from '@/models';
 
 export const aiAssistantService = {
   askQuestion: async (
-    question: string
+    query: string
   ): Promise<AIChatResponse> => {
 
     const response = await apiClient.post<AIChatResponse>(
-      '/query-chat/ask',
+      '/ai/sql-query',
       {
-        question
+        query
       }
     );
 
