@@ -161,9 +161,7 @@ const PurchaseOrders: React.FC = () => {
         advanceFilters: Object.keys(advanceFilters).length,
       });
 
-      if (user?.role === 'SUPPLIER') {
-        filters.supplier_id = user.id;
-      } else if (user?.role === 'PROCUREMENT_SPECIALIST') {
+      if (user?.role === 'PROCUREMENT_SPECIALIST') {
         filters.procurement_specialist_id = user.id;
       }
 

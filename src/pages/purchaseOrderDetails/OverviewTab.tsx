@@ -1,12 +1,23 @@
 import React from 'react';
 import { Avatar, Chip, Grid, Paper, Stack, Typography } from '@mui/material';
 import { PurchaseOrder } from '@/models';
+import {
+  formatDateForDisplay,
+  formatDeliveryBadge,
+  getConfirmedDate,
+  getDaysDelta,
+  getRequiredDeliveryDate,
+} from './utils';
 
 type OverviewTabProps = {
   po: PurchaseOrder;
 };
 
 const OverviewTab: React.FC<OverviewTabProps> = ({ po }) => {
+  const requiredDeliveryDate = getRequiredDeliveryDate(po);
+  const confirmedDate = getConfirmedDate(po);
+  const deliveryBadge = formatDeliveryBadge(getDaysDelta(requiredDeliveryDate));
+
   return (
     <Stack spacing={2} p={2}>
       <Paper variant="outlined" sx={{ p: 2 }}>
@@ -14,11 +25,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ po }) => {
         <Grid container rowSpacing={2} columnSpacing={3}>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">PO Number</Typography><Typography variant="body2">{po.po_number || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Order Type</Typography><Typography variant="body2">{po.source_system || '-'}</Typography></Grid>
-          <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Required Delivery</Typography><Stack direction="row" spacing={1}><Typography variant="body2">{po.delivery_date || '-'}</Typography><Chip label="12 days left" size="small" color="warning" variant="outlined" /></Stack></Grid>
-          <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Confirmed Date</Typography><Typography variant="body2">{po.last_modified_date || '-'}</Typography></Grid>
+          <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Required Delivery</Typography><Stack direction="row" spacing={1}><Typography variant="body2">{formatDateForDisplay(requiredDeliveryDate)}</Typography><Chip label={deliveryBadge.label} size="small" color={deliveryBadge.color} variant="outlined" /></Stack></Grid>
+          <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Confirmed Date</Typography><Typography variant="body2">{formatDateForDisplay(confirmedDate)}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Source Agreement</Typography><Typography variant="body2">{po.source_system || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Buyer</Typography><Typography variant="body2">{po.procurement_specialist_id || '-'}</Typography></Grid>
-          <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Order Date</Typography><Typography variant="body2">{po.created_date || '-'}</Typography></Grid>
+          <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Order Date</Typography><Typography variant="body2">{formatDateForDisplay(po.created_date)}</Typography></Grid>
         </Grid>
       </Paper>
 

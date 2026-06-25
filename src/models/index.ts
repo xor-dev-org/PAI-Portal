@@ -149,6 +149,7 @@ export interface PurchaseOrder {
   currency: string;
   total_value: number;
   delivery_date: string;
+  mrp_need_by_date?: string | null;
   payment_terms: string;
   mrp_exceptions: string;
   created_date: string;

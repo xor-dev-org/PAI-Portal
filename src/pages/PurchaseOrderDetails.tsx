@@ -123,6 +123,34 @@ const PurchaseOrderDetails: React.FC = () => {
   const lineItems = po?.line_items || [];
   const hasSelectedSupplierLineRows = selectedLineIds.length > 0;
 
+  useEffect(() => {
+    // Keep action state in sync with current PO line set after reloads.
+    const availableLineIds = new Set(lineItems.map((line) => formatLineId(line)));
+
+    setSelectedLineIds((prev) => prev.filter((lineId) => availableLineIds.has(lineId)));
+
+    setSelectedLine((prev) => {
+      if (!prev) return null;
+      const selectedId = formatLineId(prev);
+      return lineItems.find((line) => formatLineId(line) === selectedId) || null;
+    });
+  }, [lineItems]);
+
+  const resolveLineIdsForAction = (lineIds?: string[]) => {
+    const candidateIds = lineIds && lineIds.length > 0
+      ? lineIds
+      : selectedLine
+        ? [formatLineId(selectedLine)]
+        : [];
+
+    if (candidateIds.length === 0) {
+      return [];
+    }
+
+    const availableLineIds = new Set(lineItems.map((line) => formatLineId(line)));
+    return candidateIds.filter((lineId) => availableLineIds.has(lineId));
+  };
+
   const closeDialog = () => {
     setActiveDialog('NONE');
     setDialogNote('');
@@ -140,7 +168,15 @@ const PurchaseOrderDetails: React.FC = () => {
   };
 
   const openMenu = (event: React.MouseEvent<HTMLElement>, line: LineItem) => {
-    setSelectedLine(line);
+    const selectedId = formatLineId(line);
+    const matchedLine = lineItems.find((item) => formatLineId(item) === selectedId);
+    if (!matchedLine) {
+      setError('Selected line item is not available in the current PO data. Please refresh and try again.');
+      return;
+    }
+
+    setError(null);
+    setSelectedLine(matchedLine);
     setMenuAnchorEl(event.currentTarget);
   };
 
@@ -149,7 +185,11 @@ const PurchaseOrderDetails: React.FC = () => {
     if (selectedLineId) {
       return lineItems.find((line) => formatLineId(line) === selectedLineId) || null;
     }
-    return selectedLine;
+    if (!selectedLine) {
+      return null;
+    }
+    const selectedId = formatLineId(selectedLine);
+    return lineItems.find((line) => formatLineId(line) === selectedId) || null;
   };
 
   const closeMenu = () => {
@@ -222,13 +262,14 @@ const PurchaseOrderDetails: React.FC = () => {
   };
 
   const executeAction = async (action: string, payload?: Record<string, unknown>, lineIds?: string[]) => {
-    const resolvedLineIds = lineIds && lineIds.length > 0
-      ? lineIds
-      : selectedLine
-        ? [formatLineId(selectedLine)]
-        : [];
+    const resolvedLineIds = resolveLineIdsForAction(lineIds);
 
-    if (!id || resolvedLineIds.length === 0) return;
+    if (!id) return;
+
+    if (resolvedLineIds.length === 0) {
+      setError('Please select a valid line item before continuing.');
+      return;
+    }
 
     const line_item_id = resolvedLineIds[0];
     const req = {
@@ -353,7 +394,7 @@ const PurchaseOrderDetails: React.FC = () => {
           comments: uploadComments,
         });
       } else {
-        const resolvedLineIds = selectedLineIds.length > 0 ? selectedLineIds : selectedLine ? [formatLineId(selectedLine)] : [];
+        const resolvedLineIds = resolveLineIdsForAction(selectedLineIds);
         if (resolvedLineIds.length === 0) {
           setError('Please select a line item before upload');
           return;
@@ -473,10 +514,20 @@ const PurchaseOrderDetails: React.FC = () => {
           ) : null}
         />
 
-        {error ? <Alert severity="error">{error}</Alert> : null}
+        {error ? <Alert severity="error" onClose={() => setError(null)}>{error}</Alert> : null}
 
         <Paper variant="outlined" sx={{ p: 0, borderColor: '#d6dde8', borderRadius: 1, boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
-          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} variant="scrollable" sx={{ borderBottom: '1px solid #e5e7eb', '& .MuiTab-root': { minHeight: 40, textTransform: 'none' } }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, v) => {
+              setActiveTab(v);
+              setSelectedLine(null);
+              setSelectedLineIds([]);
+              setMenuAnchorEl(null);
+            }}
+            variant="scrollable"
+            sx={{ borderBottom: '1px solid #e5e7eb', '& .MuiTab-root': { minHeight: 40, textTransform: 'none' } }}
+          >
             {tabs.map((t, idx) => (
               <Tab key={t} label={idx === 1 ? `${t} (${lineItems.length})` : t} />
             ))}

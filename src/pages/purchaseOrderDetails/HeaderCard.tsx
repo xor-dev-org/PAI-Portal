@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Chip, Paper, Stack, Typography } from '@mui/material';
 import { PurchaseOrder } from '@/models';
 import ViewListIcon from '@mui/icons-material/ViewList';
+import { formatDateForDisplay, formatRelativeTime } from './utils';
 
 type HeaderCardProps = {
   po: PurchaseOrder;
@@ -53,9 +54,9 @@ const HeaderCard: React.FC<HeaderCardProps> = ({ po, actions }) => {
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Typography variant="body2">
-              {po.created_date || '-'} • Updated 56 minutes ago
+              {formatDateForDisplay(po.created_date)} • {formatRelativeTime(po.last_modified_date || po.created_date)}
             </Typography>
-            <Typography variant="body2">By {po.last_modified_by || '-'}</Typography>
+            <Typography variant="body2">{po.last_modified_by || '-'}</Typography>
             <Typography variant="body2">PO Type: {po.source_system || '-'}</Typography>
             <Chip
               label={po.status || 'PENDING'}
