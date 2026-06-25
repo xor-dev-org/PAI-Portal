@@ -52,6 +52,11 @@ const PurchaseOrders: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [selectedTab, setSelectedTab] = useState(0);
+  
+  const isPOToReviewTab = selectedTab === 2;
+  const isMRPExceptionTab = selectedTab === 3;
+  const isLineItemTab = isPOToReviewTab || isMRPExceptionTab;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [procurementSpecialists, setProcurementSpecialists] = useState<User[]>([]);
@@ -61,10 +66,6 @@ const PurchaseOrders: React.FC = () => {
 
   // Filter states
   const [searchInput, setSearchInput] = useState('');
-  // const debouncedSearchQuery = useDebounce(searchInput, 150);
-  // useEffect(() => {
-  //   setPage(0);
-  // }, [debouncedSearchQuery, setPage]);
 
   const [statusFilter, setStatusFilter] = useState('');
   // const [sortBy, setSortBy] = useState('');
@@ -83,14 +84,82 @@ const PurchaseOrders: React.FC = () => {
   const [pinnedPOs, setPinnedPOs] = useState<PurchaseOrder[]>([]);
   const [pinnedPOsRowCount, setPinnedPOsRowCount] = useState(0);
   const [pinFilter, setPinFilter] = useState('all'); // 'all', 'pinned'
+  const [poToReviewPinFilter, setPOToReviewPinFilter] = useState('all');
+  const [mrpPinFilter, setMrpPinFilter] = useState('all');
+  //line item level pinning for potoreview & MRP tab
+  const [pinnedPOToReviewLineItemIds, setPinnedPOToReviewLineItemIds] = useState<string[]>([]);
+  const [pinnedMRPLineItemIds, setPinnedMRPLineItemIds] = useState<string[]>([]);
+
+  const currentPinFilter = React.useMemo(() => {
+    switch (selectedTab) {
+      case 2: // PO TO REVIEW
+        return poToReviewPinFilter;
+
+      case 3: // MRP EXCEPTION
+        return mrpPinFilter;
+
+      case 0: // OPEN PO / normal PO list
+      default:
+        return pinFilter;
+    }
+  }, [selectedTab, pinFilter, poToReviewPinFilter, mrpPinFilter]);
+
+  const handleCurrentPinFilterChange = useCallback(
+    (value: string) => {
+      switch (selectedTab) {
+        case 2: // PO TO REVIEW
+          setPOToReviewPinFilter(value);
+          break;
+
+        case 3: // MRP EXCEPTION
+          setMrpPinFilter(value);
+          break;
+
+        case 0: // OPEN PO / normal PO list
+        default:
+          setPinFilter(value);
+          break;
+      }
+
+      setPage(0);
+    },
+    [selectedTab, setPage]
+  );
 
   const togglePin = (poId: string) => {
-    console.log('--pids: ', pinnedPOIds, '--poId: ', poId);
     setPinnedPOIds((prev) => {
       const updated = prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId];
 
       if (user?.id) {
-        userService.updatePinnedRows(user.id, updated);
+        userService.updatePinnedRows(user.id, updated, 'po');
+      }
+
+      return updated;
+    });
+  };
+
+  const togglePOToReviewLinePin = (lineItemRowId: string) => {
+    setPinnedPOToReviewLineItemIds((prev) => {
+      const updated = prev.includes(lineItemRowId)
+        ? prev.filter((id) => id !== lineItemRowId)
+        : [...prev, lineItemRowId];
+
+      if (user?.id) {
+        userService.updatePinnedRows(user.id, updated, 'po_to_review');
+      }
+
+      return updated;
+    });
+  };
+
+  const toggleMRPLinePin = (lineItemRowId: string) => {
+    setPinnedMRPLineItemIds((prev) => {
+      const updated = prev.includes(lineItemRowId)
+        ? prev.filter((id) => id !== lineItemRowId)
+        : [...prev, lineItemRowId];
+
+      if (user?.id) {
+        userService.updatePinnedRows(user.id, updated, 'mrp_exception');
       }
 
       return updated;
@@ -130,26 +199,20 @@ const PurchaseOrders: React.FC = () => {
         ...advanceFilters,
       };
 
-      const pinnedPOResult = await userService.getPinnedRows(user?.id || '');
+      if (user?.id) {
+        const pinnedPOResult = await userService.getPinnedRows(user.id, 'po');
+        const pinnedPOToReviewResult = await userService.getPinnedRows(user.id, 'po_to_review');
+        const pinnedMRPResult = await userService.getPinnedRows(user.id, 'mrp_exception');
 
-      // console.log('------------------Fetched pinned PO IDs from server:', pinnedPOResult);
+        setPinnedPOIds(pinnedPOResult);
+        setPinnedPOToReviewLineItemIds(pinnedPOToReviewResult);
+        setPinnedMRPLineItemIds(pinnedMRPResult);
 
-      setPinnedPOIds(pinnedPOResult);
+        const pinnedPOList = await purchaseOrderService.getPinnedPOList(user.id);
 
-      const pinnedPOList = await purchaseOrderService.getPinnedPOList(user?.id || '');
-      // const pinnedPOList = await purchaseOrderService.getPOList({
-      //   page: page + 1,
-      //   page_size: pageSize,
-      //   pinned_po_list: pinnedPOResult,
-      //   // pinned_po_list: pinFilter === 'pinned' ? pinnedPOIds : [],
-      // });
-
-      console.log('------------------Fetched pinned PO List from server :', pinnedPOList.data);
-
-      setPinnedPOs(pinnedPOList.data);
-      // console.log('Current User:', user);
-      // console.log('Pinned POs Returned:', pinnedPOList.data);
-      setPinnedPOsRowCount(pinnedPOList.total);
+        setPinnedPOs(pinnedPOList.data);
+        setPinnedPOsRowCount(pinnedPOList.total);
+      }
       console.log('Final filters:', filters);
 
       logger.info('Fetching purchase orders', {
@@ -283,17 +346,6 @@ const handleSearchChange = useCallback(
   },
   [setPage]
 );
-
-  
-
-
-  // useEffect(() => {
-  //   return () => {
-  //     if (searchDebounceRef.current) {
-  //       clearTimeout(searchDebounceRef.current);
-  //     }
-  //   };
-  // }, []);
 
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
     key: K,
@@ -548,7 +600,7 @@ const handleSearchChange = useCallback(
           ]
         : []),
     ],
-    [theme, pinnedPOIds, togglePin, statusColors, procurementSpecialistMap, user?.role]
+    [theme, pinnedPOIds, togglePin, statusColors, user?.role]
   );
 
   // console.log(columns.map((c) => c.field));
@@ -562,9 +614,8 @@ const handleSearchChange = useCallback(
         sortable: false,
         filterable: false,
         renderCell: (params) => {
-          const poId = params.row.po_id;
-
-          const isPinned = pinnedPOIds.includes(poId);
+          const lineItemRowId = params.row.id;
+          const isPinned = pinnedPOToReviewLineItemIds.includes(lineItemRowId);
 
           return (
             <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
@@ -572,7 +623,7 @@ const handleSearchChange = useCallback(
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  togglePin(poId);
+                  togglePOToReviewLinePin(lineItemRowId);
                 }}
                 sx={{
                   color: isPinned ? 'primary.main' : 'action.disabled',
@@ -658,7 +709,8 @@ const handleSearchChange = useCallback(
         field: 'updated_unit_price',
         headerName: 'Updated Unit Price',
         width: 70,
-        renderCell: (params) => formatCurrency(params.value),cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+        renderCell: (params) => formatCurrency(params.value),
+        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
       {
         field: 'net_value',
@@ -670,7 +722,8 @@ const handleSearchChange = useCallback(
         field: 'updated_net_value',
         headerName: 'Updated Total Value',
         width: 80,
-        renderCell: (params) => formatCurrency(params.value),cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+        renderCell: (params) => formatCurrency(params.value),
+        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
       {
         field: 'required_in_house_date',
@@ -682,22 +735,25 @@ const handleSearchChange = useCallback(
         field: 'updated_delivery_date',
         headerName: 'Revised Date',
         width: 100,
-        renderCell: (params) => params.value || '--',cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+        renderCell: (params) => params.value || '--',
+        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
       {
         field: 'supplier_confirmation_date',
         headerName: 'Supplier Confirmation Date',
         width: 100,
-        renderCell: (params) => params.value || '--',cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+        renderCell: (params) => params.value || '--',
+        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
       {
         field: 'concession',
         headerName: 'Concession',
         width: 100,
-        renderCell: (params) => params.value || '--',cellClassName: (params) => hasCellValue(params.value) ? 'changed-cell' : '',
+        renderCell: (params) => params.value || '--',
+        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
     ],
-    [pinnedPOIds, togglePin, theme, statusColors]
+    [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors]
   );
 
   //MRP exception coulumns
@@ -710,8 +766,8 @@ const handleSearchChange = useCallback(
         sortable: false,
         filterable: false,
         renderCell: (params) => {
-          const poId = params.row.po_id;
-          const isPinned = pinnedPOIds.includes(poId);
+          const lineItemRowId = params.row.id;
+          const isPinned = pinnedMRPLineItemIds.includes(lineItemRowId);
 
           return (
             <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
@@ -719,7 +775,7 @@ const handleSearchChange = useCallback(
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  togglePin(poId);
+                  toggleMRPLinePin(lineItemRowId);
                 }}
                 sx={{
                   color: isPinned ? 'primary.main' : 'action.disabled',
@@ -1019,20 +1075,49 @@ const handleSearchChange = useCallback(
         // PO TO REVIEW
         const inProgressRows = flattenedLineItems.filter((row) => row.status === 'IN_PROGRESS');
 
-        return pinFilter === 'pinned'
-          ? inProgressRows.filter((row) => pinnedPOIds.includes(row.po_id))
+        return currentPinFilter === 'pinned'
+          ? inProgressRows.filter((row) => pinnedPOToReviewLineItemIds.includes(row.id))
           : inProgressRows;
       }
 
-      case 3: // MRP EXCEPTION
-        return pinFilter === 'pinned'
-          ? mrpExceptionRows.filter((row) => pinnedPOIds.includes(row.po_id))
+      case 3: {
+        // MRP EXCEPTION
+        return currentPinFilter === 'pinned'
+          ? mrpExceptionRows.filter((row) => pinnedMRPLineItemIds.includes(row.id))
           : mrpExceptionRows;
+      }
 
       default:
         return displayedRows;
     }
-  }, [selectedTab, flattenedLineItems, mrpExceptionRows, displayedRows, pinFilter, pinnedPOIds]);
+  }, [
+    selectedTab,
+    flattenedLineItems,
+    mrpExceptionRows,
+    displayedRows,
+    currentPinFilter,
+    pinnedPOToReviewLineItemIds,
+    pinnedMRPLineItemIds,
+  ]);
+
+  const currentPinnedCount = React.useMemo(() => {
+    switch (selectedTab) {
+      case 2: // PO TO REVIEW
+        return pinnedPOToReviewLineItemIds.length;
+
+      case 3: // MRP EXCEPTION
+        return pinnedMRPLineItemIds.length;
+
+      case 0: // OPEN PO / normal PO list
+      default:
+        return pinnedPOIds.length;
+    }
+  }, [
+    selectedTab,
+    pinnedPOIds.length,
+    pinnedPOToReviewLineItemIds.length,
+    pinnedMRPLineItemIds.length,
+  ]);
 
   const ToolbarComponent = React.useCallback(
     () => (
@@ -1049,14 +1134,9 @@ const handleSearchChange = useCallback(
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           onFiltersClick={() => setShowAdvancedFilters(true)}
-          pinFilter={pinFilter}
-          onPinFilterChange={(value) => {
-            console.log('Pin filter list:', pinnedPOs);
-            setPinFilter(value);
-            console.log('Pin filter changed to:', value);
-            setPage(0);
-          }}
-          pinnedCount={pinnedPOIds.length}
+          pinFilter={currentPinFilter}
+          onPinFilterChange= {handleCurrentPinFilterChange}
+          pinnedCount={currentPinnedCount}
           userRole={user?.role}
           selectedTab={selectedTab}
           onTabChange={setSelectedTab}
@@ -1101,9 +1181,9 @@ const handleSearchChange = useCallback(
       statusFilter,
       sortModel.sort_order,
       viewMode,
-      pinFilter,
-      pinnedPOs,
-      pinnedPOIds.length,
+      handleCurrentPinFilterChange,
+      currentPinFilter,
+      currentPinnedCount,
       user?.role,
       selectedTab,
       appliedFilters,
@@ -1184,11 +1264,11 @@ const handleSearchChange = useCallback(
               rows={currentRows}
               columns={currentColumns}
               rowCount={
-                selectedTab === 2 || selectedTab === 3
+                isLineItemTab
                   ? currentRows.length
                   : selectedTab === 1
                     ? displayedRows.length
-                    : pinFilter === 'pinned'
+                    : currentPinFilter === 'pinned'
                       ? pinnedPOsRowCount
                       : rowCount
               }
@@ -1208,7 +1288,7 @@ const handleSearchChange = useCallback(
               disableRowSelectionOnClick
               // hideFooterSelectedRowCount
               sortingMode={
-                selectedTab === 2 || selectedTab === 3 || pinFilter === 'pinned'
+                isLineItemTab || currentPinFilter === 'pinned'
                   ? 'client'
                   : 'server'
               }
@@ -1216,11 +1296,11 @@ const handleSearchChange = useCallback(
                 // console.log('sort model: ', model);
 
                 // PO TO REVIEW and MRP EXCEPTION are client-side sorted for now
-                if (selectedTab === 2 || selectedTab === 3) {
+                if (isLineItemTab) {
                   return;
                 }
 
-                if (pinFilter === 'pinned') {
+                if (currentPinFilter === 'pinned') {
                   return;
                 }
 
