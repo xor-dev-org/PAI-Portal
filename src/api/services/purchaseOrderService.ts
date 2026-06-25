@@ -25,11 +25,14 @@ export const purchaseOrderService = {
     if (filters.po_number) params.append('po_number', filters.po_number);
     if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
     if (filters.supplier_email) params.append('supplier_email', filters.supplier_email);
-    if (filters.site) params.append('site', filters.site);
-    if (filters.total_value_from) params.append('total_value_from', filters.total_value_from.toString());
+    if (filters.sites) {
+      params.append('site',filters.sites.length > 0 ? filters.sites.join(',') : '__NO_SITE_SELECTED__');} else if (filters.site) {params.append('site', filters.site);}
+    if (filters.total_value_from)
+      params.append('total_value_from', filters.total_value_from.toString());
     if (filters.total_value_to) params.append('total_value_to', filters.total_value_to.toString());
     if (filters.source_system) params.append('source_system', filters.source_system);
-    if (filters.revision_changes) params.append('revision_changes', filters.revision_changes.toString());
+    if (filters.revision_changes)
+      params.append('revision_changes', filters.revision_changes.toString());
     if (filters.items_from) params.append('items_from', filters.items_from.toString());
     if (filters.items_to) params.append('items_to', filters.items_to.toString());
     if (filters.mrp_exceptions) params.append('mrp_exceptions', filters.mrp_exceptions);
@@ -39,13 +42,18 @@ export const purchaseOrderService = {
 
     const url = `/po?${params.toString()}`;
     const startTime = performance.now();
-    console.log("API Params:", params.toString());
+    console.log('API Params:', params.toString());
     const response = await apiClient.get<POListResponse>(url);
     logger.info('Purchase order API call completed', {
       url,
       durationMs: Math.round(performance.now() - startTime),
     });
     return response.data;
+  },
+
+  getAvailableSites: async (): Promise<string[]> => {
+    const response = await apiClient.get<{ sites: string[] }>('/po/config/sites');
+    return response.data.sites;
   },
 
   // Get Pinned PO List for a user

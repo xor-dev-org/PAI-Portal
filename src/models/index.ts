@@ -200,6 +200,7 @@ export interface POFilters {
 
   supplier_email?: string;
   site?: string;
+  sites?: string[];
 
   total_value_from?: number;
   total_value_to?: number;

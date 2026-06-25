@@ -1,5 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, TextField, Tooltip, Paper, InputAdornment, Button, Typography, IconButton, useTheme,Divider, Tabs, Tab} from '@mui/material';
+import {
+  Box,
+  TextField,
+  Tooltip,
+  Paper,
+  InputAdornment,
+  Button,
+  Typography,
+  IconButton,
+  useTheme,
+  Divider,
+  Tabs,
+  Tab,
+  Popover,
+  Checkbox,
+  FormControlLabel,
+} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -26,6 +42,8 @@ interface POFiltersProps {
   onPinFilterChange: (value: string) => void;
   pinnedCount?: number;
   availableSites: string[];
+  selectedSites: string[];
+  onSelectedSitesChange: (sites: string[]) => void;
   selectedTab: number;
   onTabChange: (tab: number) => void;
   userRole?: string;
@@ -44,7 +62,9 @@ const POFilters: React.FC<POFiltersProps> = ({
   pinFilter,
   onPinFilterChange,
   pinnedCount = 0,
-  // availableSites,
+  availableSites,
+  selectedSites,
+  onSelectedSitesChange,
   selectedTab,
   onTabChange,
   userRole,
@@ -52,7 +72,57 @@ const POFilters: React.FC<POFiltersProps> = ({
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [siteAnchorEl, setSiteAnchorEl] = useState<HTMLElement | null>(null);
+  const [siteSearch, setSiteSearch] = useState('');
+  const [draftSelectedSites, setDraftSelectedSites] = useState<string[]>(selectedSites);
 
+  const isSitePopoverOpen = Boolean(siteAnchorEl);
+  useEffect(() => {
+    if (isSitePopoverOpen) {
+      setDraftSelectedSites(selectedSites);
+    }
+  }, [isSitePopoverOpen, selectedSites]);
+
+  const filteredSites = availableSites.filter((site) =>
+    site.toLowerCase().includes(siteSearch.toLowerCase())
+  );
+
+  const allSitesSelected =
+    availableSites.length > 0 && draftSelectedSites.length === availableSites.length;
+
+  const someSitesSelected =
+    draftSelectedSites.length > 0 && draftSelectedSites.length < availableSites.length;
+
+  const handleSiteToggle = (site: string) => {
+    setDraftSelectedSites((prev) =>
+      prev.includes(site) ? prev.filter((selectedSite) => selectedSite !== site) : [...prev, site]
+    );
+  };
+
+  const handleToggleAllSites = () => {
+    if (allSitesSelected) {
+      setDraftSelectedSites([]);
+    } else {
+      setDraftSelectedSites(availableSites);
+    }
+  };
+
+  const handleResetSites = () => {
+    setSiteSearch('');
+    setDraftSelectedSites(availableSites);
+  };
+
+  const handleCloseSitePopover = () => {
+    setSiteAnchorEl(null);
+    setDraftSelectedSites(selectedSites);
+    setSiteSearch('');
+  };
+
+  const handleApplySiteFilter = () => {
+    onSelectedSitesChange(draftSelectedSites);
+    setSiteAnchorEl(null);
+    setSiteSearch('');
+  };
   const [localSearchInput, setLocalSearchInput] = useState(searchInput);
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -66,7 +136,6 @@ const POFilters: React.FC<POFiltersProps> = ({
 
   // It stays expanded if focused OR if there is text typed inside it
   const isExpanded = isFocused || localSearchInput.length > 0;
-  console.log('POFilters Rendered');
 
   return (
     <Paper
@@ -218,10 +287,147 @@ const POFilters: React.FC<POFiltersProps> = ({
 
           {/* SITE */}
           <Tooltip title="Select Sites">
-            <Button>
+            <Button
+              onClick={(event) => {
+                setSiteAnchorEl(event.currentTarget);
+              }}
+              color="primary"
+            >
               <BusinessIcon />
             </Button>
           </Tooltip>
+
+          <Popover
+            open={isSitePopoverOpen}
+            anchorEl={siteAnchorEl}
+            onClose={handleCloseSitePopover}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            PaperProps={{
+              sx: {
+                width: 420,
+                mt: 1,
+                borderRadius: 1,
+                border: '1px solid #D0D0D0',
+                boxShadow: 3,
+              },
+            }}
+          >
+            {/* Search */}
+            <Box sx={{ p: 1, borderBottom: '1px solid #E0E0E0' }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search"
+                value={siteSearch}
+                onChange={(event) => setSiteSearch(event.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+
+            {/* Site List */}
+            <Box
+              sx={{
+                p: 1,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                columnGap: 1,
+                rowGap: 0,
+                maxHeight: 180,
+                overflowY: 'auto',
+              }}
+            >
+              {filteredSites.length > 0 ? (
+                filteredSites.map((site) => (
+                  <FormControlLabel
+                    key={site}
+                    sx={{
+                      m: 0,
+                      height: 30,
+                    }}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={draftSelectedSites.includes(site)}
+                        onChange={() => handleSiteToggle(site)}
+                        sx={{ p: 0.5 }}
+                      />
+                    }
+                    label={site}
+                  />
+                ))
+              ) : (
+                <Typography
+                  sx={{
+                    gridColumn: '1 / -1',
+                    color: 'text.secondary',
+                  }}
+                >
+                  No sites found
+                </Typography>
+              )}
+            </Box>
+
+            {/* Footer */}
+            <Box
+              sx={{
+                px: 1,
+                py: 0.75,
+                borderTop: '1px solid #E0E0E0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <FormControlLabel
+                sx={{
+                  m: 0,
+                }}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={allSitesSelected}
+                    indeterminate={someSitesSelected}
+                    onChange={handleToggleAllSites}
+                    sx={{ p: 0.5 }}
+                  />
+                }
+                label="Show/Hide All"
+              />
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={handleApplySiteFilter}
+                  sx={{
+                    font: 82,
+                    fontSize: '0.72rem',
+                    height: 28,
+                    textTransform: 'none',
+                  }}
+                >
+                  Apply Filter
+                </Button>
+
+                <Button size="small" onClick={handleResetSites}>
+                  Reset
+                </Button>
+              </Box>
+            </Box>
+          </Popover>
 
           <Divider orientation="vertical" flexItem sx={{ height: 28, alignSelf: 'center' }} />
 

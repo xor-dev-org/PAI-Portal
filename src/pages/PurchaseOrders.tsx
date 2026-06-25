@@ -66,7 +66,9 @@ const PurchaseOrders: React.FC = () => {
 
   // Filter states
   const [searchInput, setSearchInput] = useState('');
-
+  const [availableSites, setAvailableSites] = useState<string[]>([]);
+  const [selectedSites, setSelectedSites] = useState<string[]>([]);
+  const [sitesLoaded, setSitesLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   // const [sortBy, setSortBy] = useState('');
   // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -179,7 +181,29 @@ const PurchaseOrders: React.FC = () => {
     loadProcurementSpecialists();
   }, []);
 
+  useEffect(() => {
+    const loadAvailableSites = async () => {
+      try {
+        const sites = await purchaseOrderService.getAvailableSites();
+
+        setAvailableSites(sites);
+        setSelectedSites(sites);
+      } catch (error) {
+        console.error('Failed to load available sites', error);
+        setAvailableSites([]);
+        setSelectedSites([]);
+      } finally {
+        setSitesLoaded(true);
+      }
+    };
+
+    loadAvailableSites();
+  }, []);
+
   const fetchPurchaseOrders = useCallback(async () => {
+    if (!sitesLoaded) {
+      return;
+    }
     const startTime = performance.now();
     try {
       setLoading(true);
@@ -196,6 +220,7 @@ const PurchaseOrders: React.FC = () => {
         sort_by: sortModel.sort_by,
         sort_order: sortModel.sort_order,
         search: searchInput,
+        sites: selectedSites,
         ...advanceFilters,
       };
 
@@ -229,6 +254,7 @@ const PurchaseOrders: React.FC = () => {
         filters.procurement_specialist_id = user.id;
       }
       //console.log("Filters Sent:", filters);
+      console.log('Selected Sites Sent:', selectedSites);
       const response = await purchaseOrderService.getPOList(filters);
       setPurchaseOrders(response.data);
       setRowCount(response.total);
@@ -257,6 +283,8 @@ const PurchaseOrders: React.FC = () => {
     user,
     advanceFilters,
     pinFilter,
+    selectedSites,
+    sitesLoaded,
   ]);
 
   useEffect(() => {
@@ -1119,6 +1147,14 @@ const handleSearchChange = useCallback(
     pinnedMRPLineItemIds.length,
   ]);
 
+  const handleSelectedSitesChange = useCallback(
+    (sites: string[]) => {
+      setSelectedSites(sites);
+      setPage(0);
+    },
+    [setPage]
+  );
+
   const ToolbarComponent = React.useCallback(
     () => (
       <>
@@ -1135,8 +1171,11 @@ const handleSearchChange = useCallback(
           onViewModeChange={setViewMode}
           onFiltersClick={() => setShowAdvancedFilters(true)}
           pinFilter={currentPinFilter}
-          onPinFilterChange= {handleCurrentPinFilterChange}
+          onPinFilterChange={handleCurrentPinFilterChange}
           pinnedCount={currentPinnedCount}
+          availableSites={availableSites}
+          selectedSites={selectedSites}
+          onSelectedSitesChange={handleSelectedSitesChange}
           userRole={user?.role}
           selectedTab={selectedTab}
           onTabChange={setSelectedTab}
@@ -1255,88 +1294,76 @@ const handleSearchChange = useCallback(
         </Alert>
       )}
       {/* TODO: Optimise this block if selected */}
-      {purchaseOrders.length === 0 && !loading ? (
-        <Alert severity="info">No purchase orders found</Alert>
-      ) : (
-        <>
-          <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
-            <DataGrid
-              rows={currentRows}
-              columns={currentColumns}
-              rowCount={
-                isLineItemTab
-                  ? currentRows.length
-                  : selectedTab === 1
-                    ? displayedRows.length
-                    : currentPinFilter === 'pinned'
-                      ? pinnedPOsRowCount
-                      : rowCount
-              }
-              rowHeight={35}
-              // getRowClassName={(params) => {
-              //   // console.log('params: ', params);
-              //   return params.indexRelativeToCurrentPage % 2 === 0 ? 'light_row' : 'dark_row';
-              // }}
-              pagination
-              paginationMode="server"
-              // rowCountMode="server"
-              pageSizeOptions={[10, 25, 50, 60, 100]}
-              loading={loading}
-              onPaginationModelChange={handlePaginationModelChange}
-              paginationModel={{ page, pageSize }}
-              getRowId={(row) => row.id}
-              disableRowSelectionOnClick
-              // hideFooterSelectedRowCount
-              sortingMode={
-                isLineItemTab || currentPinFilter === 'pinned'
-                  ? 'client'
-                  : 'server'
-              }
-              onSortModelChange={(model) => {
-                // console.log('sort model: ', model);
+      <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
+        <DataGrid
+          rows={currentRows}
+          columns={currentColumns}
+          rowCount={
+            isLineItemTab
+              ? currentRows.length
+              : selectedTab === 1
+                ? displayedRows.length
+                : currentPinFilter === 'pinned'
+                  ? pinnedPOsRowCount
+                  : rowCount
+          }
+          rowHeight={35}
+          pagination
+          paginationMode="server"
+          pageSizeOptions={[10, 25, 50, 60, 100]}
+          loading={loading}
+          onPaginationModelChange={handlePaginationModelChange}
+          paginationModel={{ page, pageSize }}
+          getRowId={(row) => row.id}
+          disableRowSelectionOnClick
+          sortingMode={isLineItemTab || currentPinFilter === 'pinned' ? 'client' : 'server'}
+          onSortModelChange={(model) => {
+            console.log('sort model: ', model);
 
-                // PO TO REVIEW and MRP EXCEPTION are client-side sorted for now
-                if (isLineItemTab) {
-                  return;
-                }
+            if (isLineItemTab) {
+              return;
+            }
 
-                if (currentPinFilter === 'pinned') {
-                  return;
-                }
+            if (currentPinFilter === 'pinned') {
+              return;
+            }
 
-                setSortModel({
-                  sort_by: model[0]?.field,
-                  sort_order: (model[0]?.sort as 'asc' | 'desc') || 'asc',
-                });
+            setSortModel({
+              sort_by: model[0]?.field,
+              sort_order: (model[0]?.sort as 'asc' | 'desc') || 'asc',
+            });
 
-                setPage(0);
-              }}
-              onRowClick={(params) => handleGridRowClick(params.row)}
-              sx={{
-                '& .MuiDataGrid-row': {
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: '#F8EFE7',
-                  },
-                  fontSize: '0.8rem',
-                },
+            setPage(0);
+          }}
+          onRowClick={(params) => handleGridRowClick(params.row)}
+          localeText={{
+            noRowsLabel:
+              selectedSites.length === 0 ? 'No sites selected' : 'No purchase orders found',
+          }}
+          sx={{
+            '& .MuiDataGrid-row': {
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#F8EFE7',
+              },
+              fontSize: '0.8rem',
+            },
 
-                '& .MuiDataGrid-toolbarContainer': {
-                  justifyContent: 'flex-end',
-                  width: '100%',
-                },
-                '& .changed-cell': {
-                  color: theme.palette.primary.light,
-                  fontWeight: 700,
-                },
-              }}
-              slots={{
-                toolbar: ToolbarComponent,
-              }}
-            />
-          </Box>
-        </>
-      )}
+            '& .MuiDataGrid-toolbarContainer': {
+              justifyContent: 'flex-end',
+              width: '100%',
+            },
+
+            '& .changed-cell': {
+              color: theme.palette.primary.light,
+              fontWeight: 700,
+            },
+          }}
+          slots={{
+            toolbar: ToolbarComponent,
+          }}
+        />
+      </Box>
       {/* Advanced Filters Dialog */}
       <Dialog
         open={showAdvancedFilters}
