@@ -220,7 +220,7 @@ const PurchaseOrders: React.FC = () => {
         sort_by: sortModel.sort_by,
         sort_order: sortModel.sort_order,
         search: searchInput,
-        sites: selectedSites,
+        // sites: selectedSites,
         ...advanceFilters,
       };
 
@@ -254,6 +254,7 @@ const PurchaseOrders: React.FC = () => {
       //console.log("Filters Sent:", filters);
       console.log('Selected Sites Sent:', selectedSites);
       const response = await purchaseOrderService.getPOList(filters);
+      console.log('po resp: ', response);
       setPurchaseOrders(response.data);
       setRowCount(response.total);
 

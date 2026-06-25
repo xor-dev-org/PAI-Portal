@@ -35,8 +35,8 @@ export const purchaseOrderService = {
     if (filters.po_number) params.append('po_number', filters.po_number);
     if (filters.supplier_name) params.append('supplier_name', filters.supplier_name);
     if (filters.supplier_email) params.append('supplier_email', filters.supplier_email);
-    if (filters.sites) {
-      params.append('site',filters.sites.length > 0 ? filters.sites.join(',') : '__NO_SITE_SELECTED__');} else if (filters.site) {params.append('site', filters.site);}
+    // if (filters.sites) {
+    //   params.append('site',filters.sites.length > 0 ? filters.sites.join(',') : '__NO_SITE_SELECTED__');} else if (filters.site) {params.append('site', filters.site);}
     if (filters.total_value_from)
       params.append('total_value_from', filters.total_value_from.toString());
     if (filters.total_value_to) params.append('total_value_to', filters.total_value_to.toString());
