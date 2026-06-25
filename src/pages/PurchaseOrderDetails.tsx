@@ -100,25 +100,27 @@ const PurchaseOrderDetails: React.FC = () => {
     setDocumentsRows(rows || []);
   }, [id]);
 
-  const reloadAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([reloadPo(), reloadHistory(), reloadDocuments()]);
-      if (user?.id) {
-        const pinned = await userService.getLinePinnedRows(user.id);
-        setPinnedLineIds(pinned);
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to load PO details');
-    } finally {
-      setLoading(false);
-    }
-  }, [reloadPo, reloadHistory, reloadDocuments, user?.id]);
-
   useEffect(() => {
-    void reloadAll();
-  }, [reloadAll]);
+    const loadAll = async () => {
+      if (!id) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        await Promise.all([reloadPo(), reloadHistory(), reloadDocuments()]);
+        if (user?.id) {
+          const pinned = await userService.getLinePinnedRows(user.id);
+          setPinnedLineIds(pinned);
+        }
+      } catch (err: any) {
+        setError(err?.response?.data?.detail || 'Failed to load PO details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadAll();
+  }, [id, reloadPo, reloadHistory, reloadDocuments, user?.id]);
 
   useEffect(() => {
     const publishChatContext = async () => {
