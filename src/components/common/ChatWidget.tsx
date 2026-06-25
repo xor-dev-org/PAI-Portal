@@ -18,6 +18,13 @@ import {
   useTheme,
 } from '@mui/material';
 import { Chat, Close, Send, AttachFile, Clear, InsertDriveFile, Download } from '@mui/icons-material';
+import { aiAssistantService } from '@/api/services/aiAssistantService';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { ChatClient } from '@azure/communication-chat';
+import { AzureCommunicationTokenCredential } from '@azure/communication-common';
+import { acsChatService } from '@/api/services/acsChatService';
+import { authService } from '@/api/services/authService';
 
 export type ChatMessage = {
   id: number;
@@ -41,28 +48,86 @@ export type Conversation = {
   poNumber?: string;
 };
 
+export type ChatContext = {
+  poNumber?: string;
+  fromEmail: string;
+  fromName: string;
+  toEmail: string;
+  toName: string;
+};
+
 interface ChatWidgetProps {
   initialConversations: Conversation[];
   title?: string;
   subtitle?: string;
+  chatContext?: ChatContext | null;
 }
 
 const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const hashString = (value: string) => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const getAcsSenderId = (message: any) =>
+  message?.sender?.communicationUserId ||
+  message?.sender?.rawId ||
+  message?.sender?.id ||
+  message?.senderCommunicationIdentifier?.communicationUserId ||
+  message?.senderCommunicationIdentifier?.rawId ||
+  message?.senderCommunicationIdentifier?.id ||
+  message?.senderDisplayName ||
+  '';
+
+const isCurrentUserMessage = (message: any, currentUserAcsId: string, currentUserName?: string) => {
+  const senderId = getAcsSenderId(message);
+  return (
+    senderId === currentUserAcsId ||
+    senderId === currentUserName ||
+    senderId.includes(currentUserAcsId) ||
+    senderId.includes(currentUserName || '')
+  );
+};
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ 
   initialConversations, 
   title = "Messages", 
-  subtitle = "Chat with your team members" 
+  subtitle = "Chat with your team members",
+  chatContext = null,
 }) => {
   const theme = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null); // For auto-scrolling
 
   const [open, setOpen] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
+
+  const AI_CONVERSATION: Conversation = {
+    id: -999,
+    name: 'AI Assistant',
+    role: 'Procurement AI',
+    avatar: 'AI',
+    lastMessage: 'Ask me anything about purchase orders',
+    lastTime: '',
+    unread: 0,
+    messages: []
+  };
+
+  const [conversations, setConversations] = useState<Conversation[]>([AI_CONVERSATION,...initialConversations]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState('');
+  const [acsMessages, setAcsMessages] = useState<any[]>([]);
+  const messageHandlerRef = useRef<any>(null);
+  const seenAcsMessageIdsRef = useRef<Set<string>>(new Set());
+  const [activeChatContext, setActiveChatContext] = useState<ChatContext | null>(chatContext);
+
+  const [threadClient, setThreadClient] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isThinking, setIsThinking] = useState<boolean>(false);
+  const [isInitializingACS, setIsInitializingACS] = useState(false);
 
   // Auto-scroll to the bottom whenever a new message lands or chat changes
   const scrollToBottom = () => {
@@ -76,17 +141,71 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   }, [conversations, open, selectedId]);
 
   useEffect(() => {
-    if (initialConversations.length > 0) {
-      const firstId = initialConversations[0].id;
-      setSelectedId(firstId);
-      setConversations(
-        initialConversations.map((c) => c.id === firstId ? { ...c, unread: 0 } : c)
-      );
-    } else {
-      setConversations([]);
-      setSelectedId(null);
+    setActiveChatContext(chatContext);
+  }, [chatContext]);
+
+  useEffect(() => {
+    const handleChatContextEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<ChatContext>;
+      setActiveChatContext(customEvent.detail || null);
+    };
+
+    const clearChatContextEvent = (_event: Event) => {
+      setActiveChatContext(null);
+    };
+
+    window.addEventListener('chat-context', handleChatContextEvent as EventListener);
+    window.addEventListener('clear-chat-context', clearChatContextEvent);
+
+    return () => {
+      window.removeEventListener('chat-context', handleChatContextEvent as EventListener);
+      window.removeEventListener('clear-chat-context', clearChatContextEvent);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeChatContext) {
+      const conversationId = hashString(activeChatContext.poNumber || 'po-chat');
+      const poConversation: Conversation = {
+        id: conversationId,
+        name: activeChatContext.toName,
+        role: 'PO-linked chat',
+        avatar: activeChatContext.toName.slice(0, 2).toUpperCase(),
+        lastMessage: `PO ${activeChatContext.poNumber || 'linked chat'}`,
+        lastTime: '',
+        unread: 0,
+        messages: [],
+        poNumber: activeChatContext.poNumber,
+      };
+
+      setConversations([AI_CONVERSATION, poConversation]);
+      setSelectedId(conversationId);
+      setAcsMessages([]);
+      seenAcsMessageIdsRef.current = new Set();
+      setThreadClient(null);
+      messageHandlerRef.current = null;
+      return;
     }
-  }, [initialConversations]);
+
+    const updatedConversations = [AI_CONVERSATION, ...initialConversations];
+
+    if (updatedConversations.length > 0) {
+      const firstId = updatedConversations[0].id;
+
+      setSelectedId(firstId);
+      setThreadClient(null);
+      messageHandlerRef.current = null;
+      setAcsMessages([]);
+      seenAcsMessageIdsRef.current = new Set();
+      setConversations(
+        updatedConversations.map(c =>
+          c.id === firstId
+            ? { ...c, unread: 0 }
+            : c
+        )
+      );
+    }
+  }, [initialConversations, activeChatContext]);
 
   const selectedConversation = useMemo(
     () => conversations.find((item) => item.id === selectedId) ?? conversations[0],
@@ -108,15 +227,114 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     }
   };
 
-  const handleSelectConversation = (id: number) => {
-    setSelectedId(id);
-    setConversations((current) =>
-      current.map((c) => (c.id === id ? { ...c, unread: 0 } : c))
-    );
+  const handleSelectConversation =
+    async (id: number) => {
+
+      setSelectedId(id);
+
+      setConversations(current =>
+        current.map(c =>
+          c.id === id
+            ? { ...c, unread: 0 }
+            : c
+        )
+      );
+
+      if (id !== -999 && activeChatContext) {
+        await initializeACS(activeChatContext);
+      }
   };
 
-  const handleSend = () => {
+  const typeWriterResponse = (
+    text: string
+  ) => {
+
+    const messageId = Date.now();
+
+    const botMessage: ChatMessage = {
+      id: messageId,
+      sender: 'other',
+      text: '',
+      time: formatTime(new Date())
+    };
+
+    setConversations(current =>
+      current.map(conv =>
+        conv.id === -999
+          ? {
+              ...conv,
+              messages: [
+                ...conv.messages,
+                botMessage
+              ]
+            }
+          : conv
+      )
+    );
+
+    let index = 0;
+
+    const interval = setInterval(() => {
+
+      index++;
+
+      setConversations(current =>
+        current.map(conv =>
+          conv.id === -999
+            ? {
+                ...conv,
+                messages: conv.messages.map(msg =>
+                  msg.id === messageId
+                    ? {
+                        ...msg,
+                        text: text.slice(
+                          0,
+                          index
+                        )
+                      }
+                    : msg
+                )
+              }
+            : conv
+        )
+      );
+
+      if (index >= text.length) {
+        clearInterval(interval);
+      }
+
+    }, 15);
+  };
+
+  const handleSend = async () => {
+
+    if (isInitializingACS) {
+        return;
+    }
+
     const trimmed = draft.trim();
+
+    if (
+      selectedConversation?.id !== -999
+    ) {
+      if (!trimmed) {
+        return;
+      }
+
+      if (!threadClient) {
+        return;
+      }
+
+      await threadClient.sendMessage({
+          content: trimmed
+      });
+
+      setDraft('');
+      clearSelectedFile();
+
+      return;
+    }
+
     if (!trimmed && !selectedFile || !selectedConversation) return;
 
     let fileUrl = undefined;
@@ -130,33 +348,162 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     const messageText = trimmed || (fileType === 'image' ? 'Sent an image' : `📄 Attached: ${selectedFile?.name}`);
 
-    const newMessage: ChatMessage = {
-      id: Date.now(),
-      sender: 'me',
-      text: messageText,
-      time: formatTime(new Date()),
-      fileName: selectedFile ? selectedFile.name : undefined,
-      fileUrl,
-      fileType,
-    };
 
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === selectedConversation.id
-          ? {
-              ...conversation,
-              lastMessage: selectedFile ? (fileType === 'image' ? '📷 Image' : `📄 ${selectedFile.name}`) : trimmed,
-              lastTime: 'Now',
-              unread: 0,
-              messages: [...conversation.messages, newMessage],
-            }
-          : conversation
-      )
-    );
+    const question = trimmed;
+
+    setDraft('');
+    clearSelectedFile();
+
+    if (selectedConversation?.id === -999) {
+
+      setIsThinking(true);
+
+      try {
+
+        setConversations(current =>
+          current.map(conv =>
+            conv.id === -999
+              ? {
+                  ...conv,
+                  messages: [
+                    ...conv.messages,
+                    {
+                      id: Date.now(),
+                      sender: 'me',
+                      text: question,
+                      time: formatTime(new Date())
+                    }
+                  ]
+                }
+              : conv
+          )
+        );
+
+        const response = await aiAssistantService.askQuestion(question);
+
+        setIsThinking(false);
+
+        typeWriterResponse(
+          response.output
+        );
+
+      } catch {
+
+        setIsThinking(false);
+
+        typeWriterResponse(
+          'Sorry, I encountered an error.'
+        );
+      }
+
+      return;
+  }
 
     setDraft('');
     clearSelectedFile();
   };
+
+  const initializeACS = async (context: ChatContext) => {
+    setIsInitializingACS(true);
+    try{
+    const currentUser = authService.getCurrentUser();
+
+    if (!currentUser?.email) {
+      return;
+    }
+
+    const session = await acsChatService.getChatSession({
+      fromEmail: currentUser.email,
+      fromName: currentUser.name || currentUser.email,
+      toEmail: context.toEmail,
+      toName: context.toName,
+      poNumber: context.poNumber,
+    });
+
+    const userId = session.data.acsUserId;
+    seenAcsMessageIdsRef.current = new Set();
+
+    const credential = new AzureCommunicationTokenCredential(session.data.token);
+    const client = new ChatClient(session.data.endpoint, credential);
+    const thread = client.getChatThreadClient(session.data.threadId);
+
+    setThreadClient(thread);
+
+    const history: Array<{
+      id: string;
+      text: string;
+      sender: 'me' | 'other';
+      time: string;
+    }> = [];
+
+    for await (const msg of thread.listMessages()) {
+      const historyItem = {
+        id: String(msg.id),
+        text: msg.content?.message || '',
+        sender: isCurrentUserMessage(msg, userId, currentUser.name) ? 'me' : 'other',
+        time: msg.createdOn ? formatTime(new Date(msg.createdOn)) : '',
+      };
+      const text = msg.content?.message?.trim();
+
+      if (!text) {
+          continue;
+      }
+
+      if (!seenAcsMessageIdsRef.current.has(historyItem.id)) {
+        seenAcsMessageIdsRef.current.add(historyItem.id);
+        history.push(historyItem);
+      }
+    }
+
+    setAcsMessages(history.reverse());
+
+    await client.startRealtimeNotifications();
+
+    if (!messageHandlerRef.current) {
+      messageHandlerRef.current = (event: any) => {
+        if (event.threadId !== session.data.threadId) {
+          return;
+        }
+
+        const isCurrentUser = isCurrentUserMessage(event, userId, currentUser.name);
+
+        const messageId = String(event.id || `live-${Date.now()}`);
+
+        if (seenAcsMessageIdsRef.current.has(messageId)) {
+          return;
+        }
+
+        seenAcsMessageIdsRef.current.add(messageId);
+
+        setAcsMessages(prev => [
+          ...prev,
+          {
+            id: messageId,
+            text: event.message,
+            sender: isCurrentUser ? 'me' : 'other',
+            time: event.createdOn ? formatTime(new Date(event.createdOn)) : formatTime(new Date()),
+          },
+        ]);
+      };
+
+      client.on('chatMessageReceived', messageHandlerRef.current);
+    }
+      } finally {
+    setIsInitializingACS(false);
+  }
+  };
+
+  useEffect(() => {
+    if (!activeChatContext || selectedConversation?.id === -999 || threadClient) {
+      return;
+    }
+
+    if (!open) {
+      return;
+    }
+
+    void initializeACS(activeChatContext);
+  }, [activeChatContext, open, selectedConversation?.id, threadClient]);
 
   return (
     <Box sx={{ position: 'fixed', bottom: 60, right: 16, zIndex: (theme) => theme.zIndex.drawer + 10 }}>
@@ -177,7 +524,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                     <ListItemButton 
                       selected={selectedConversation?.id === conversation.id} 
                       onClick={() => handleSelectConversation(conversation.id)}
-                      sx={{ borderRadius: 2, mx: 1 }}
+                      sx={{ borderRadius: 1, mx: 1 }}
                     >
                       <ListItemAvatar>
                         <Badge badgeContent={conversation.unread || null} color="primary">
@@ -214,14 +561,18 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
             {/* Message Stream */}
             <Box sx={{ flexGrow: 1, px: 2, py: 2, overflowY: 'auto', backgroundColor: theme.palette.background.default }}>
-              {selectedConversation?.messages.map((message) => (
+              {
+                (selectedConversation?.id === -999
+                  ? selectedConversation?.messages
+                  : acsMessages
+                )?.map((message: any)  => (
                 <Box key={message.id} sx={{ display: 'flex', justifyContent: message.sender === 'me' ? 'flex-end' : 'flex-start', mb: 1.2 }}>
                   <Paper 
                     elevation={0} 
                     sx={{ 
                       maxWidth: '75%', 
                       p: message.fileType === 'image' ? 0.75 : 1.25, // Tighter padding for images
-                      borderRadius: 2, 
+                      borderRadius: 1, 
                       bgcolor: message.sender === 'me' ? theme.palette.primary.main : theme.palette.action.hover, 
                       color: message.sender === 'me' ? theme.palette.primary.contrastText : 'inherit',
                       overflow: 'hidden'
@@ -234,7 +585,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                           component="img" 
                           src={message.fileUrl} 
                           alt={message.fileName} 
-                          sx={{ maxWidth: '100%', maxHeight: 240, borderRadius: 1.5, objectFit: 'cover', display: 'block' }} 
+                          sx={{ maxWidth: '100%', maxHeight: 240, borderRadius: 1, objectFit: 'cover', display: 'block' }} 
                         />
                         {/* Render caption text beneath image if it exists */}
                         {message.text && message.text !== 'Sent an image' && (
@@ -266,7 +617,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                             download={message.fileName}
                             color="inherit"
                           >
-                            <Download size="small" />
+                            <Download fontSize="small" />
                           </IconButton>
                         </Box>
                         {message.text && !message.text.startsWith('📄 Attached:') && (
@@ -275,7 +626,24 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                       </Box>
                     ) : (
                       // Plain Text Message Layout
-                      <Typography variant="body2">{message.text}</Typography>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }: React.PropsWithChildren) => (
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                m: 0,
+                                lineHeight: 1.4
+                              }}
+                            >
+                              {children}
+                            </Typography>
+                          )
+                        }}
+                      >
+                        {message.text}
+                      </ReactMarkdown>
                     )}
                     
                     <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', mt: 0.5, px: message.fileType === 'image' ? 0.5 : 0 }}>
@@ -284,6 +652,65 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                   </Paper>
                 </Box>
               ))}
+              {
+                isThinking &&
+                selectedConversation?.id === -999 && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      mb: 1.2
+                    }}
+                  >
+                    <Paper
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          gap: 0.5,
+                          alignItems: 'center',
+
+                          '& .ai-dot': {
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: '#666',
+                            animation: 'aiBounce 1.4s infinite ease-in-out'
+                          },
+
+                          '& .dot2': {
+                            animationDelay: '0.2s'
+                          },
+
+                          '& .dot3': {
+                            animationDelay: '0.4s'
+                          },
+
+                          '@keyframes aiBounce': {
+                            '0%, 80%, 100%': {
+                              transform: 'translateY(0)',
+                              opacity: 0.4
+                            },
+                            '40%': {
+                              transform: 'translateY(-6px)',
+                              opacity: 1
+                            }
+                          }
+                        }}
+                      >
+                        <Box className="ai-dot dot1" />
+                        <Box className="ai-dot dot2" />
+                        <Box className="ai-dot dot3" />
+                      </Box>
+
+                    </Paper>
+                  </Box>
+                )
+              }
               {/* Invisible anchor node to handle smooth scroll pinning */}
               <div ref={messagesEndRef} />
             </Box>
@@ -328,18 +755,27 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                   placeholder={selectedFile ? "Add a caption..." : `Message ${selectedConversation?.name || ''}...`} 
                   value={draft} 
                   onChange={(event) => setDraft(event.target.value)} 
-                  onKeyDown={(event) => { 
-                    if (event.key === 'Enter' && !event.shiftKey) { 
-                      event.preventDefault(); 
-                      handleSend(); 
-                    } 
-                  }} 
+                  // disabled={isInitializingACS}
+                  onKeyDown={(event) => {
+                      if (isInitializingACS) {
+                          event.preventDefault();
+                          return;
+                      }
+
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          handleSend();
+                      }
+                  }}
                 />
                 
                 <IconButton 
                   color="primary" 
                   onClick={handleSend} 
-                  disabled={!draft.trim() && !selectedFile} 
+                  disabled={
+                      isInitializingACS ||
+                      (!draft.trim() && !selectedFile)
+                  }
                   aria-label="Send message"
                 >
                   <Send />

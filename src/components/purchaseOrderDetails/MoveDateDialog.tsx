@@ -1,49 +1,38 @@
-import React from 'react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogContent,
-  IconButton,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import OpenInFullIcon from '@mui/icons-material/OpenInFull';
-import { LineItem } from '@/models';
+import React, { useState } from 'react';
+import { Close, OpenInFull } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, Divider, Grid, IconButton, Stack, TextField, Typography } from '@mui/material';
+
 import { poDetailsColors } from './constants';
-import { formatActionLabel, formatLineId } from './helpers';
 
 interface MoveDateDialogProps {
   open: boolean;
-  lineItem: LineItem | null;
-  action: 'MOVE_IN' | 'MOVE_OUT' | null;
-  fullscreen: boolean;
-  notes: string;
-  dateValue: string;
+  mode: 'MOVE_IN' | 'MOVE_OUT';
+  lineId: string;
+  materialCode?: string;
+  quantity?: number;
+  currentDate?: string;
+  date: string;
   onDateChange: (value: string) => void;
-  onNotesChange: (value: string) => void;
   onClose: () => void;
-  onToggleFullscreen: () => void;
   onSubmit: () => void;
 }
 
 const MoveDateDialog: React.FC<MoveDateDialogProps> = ({
   open,
-  lineItem,
-  action,
-  fullscreen,
-  notes,
-  dateValue,
+  mode,
+  lineId,
+  materialCode,
+  quantity,
+  currentDate,
+  date,
   onDateChange,
-  onNotesChange,
   onClose,
-  onToggleFullscreen,
   onSubmit,
 }) => {
-  const lineId = lineItem ? lineItem.id || formatLineId(lineItem.line_number) : '';
-  const fieldLabel = action === 'MOVE_IN' ? 'Required In-House Date' : 'Shipment Date';
+  const [fullscreen, setFullscreen] = useState(false);
+  const title = mode === 'MOVE_IN' ? 'Request Move in Delivery Date' : 'Request Move out Delivery Date';
+  const fieldLabel = mode === 'MOVE_IN' ? 'New Required In House Date' : 'New Shipment Date';
+  const currentLabel = mode === 'MOVE_IN' ? 'Current Required In House Date' : 'Current Shipment Date';
 
   return (
     <Dialog
@@ -52,7 +41,7 @@ const MoveDateDialog: React.FC<MoveDateDialogProps> = ({
       fullScreen={fullscreen}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { maxWidth: fullscreen ? '100%' : 560, borderRadius: 1.5 } }}
+      PaperProps={{ sx: { maxWidth: fullscreen ? '100%' : 560, borderRadius: fullscreen ? 0 : 1.5 } }}
     >
       <Box
         sx={{
@@ -63,64 +52,34 @@ const MoveDateDialog: React.FC<MoveDateDialogProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          position: 'relative',
         }}
       >
-        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>
-          {action ? `${formatActionLabel(action)} Date - PO Line ${lineId}` : 'Update Date'}
-        </Typography>
-        <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" onClick={onToggleFullscreen} sx={{ color: '#fff' }}>
-            <OpenInFullIcon fontSize="small" />
+        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{title} - PO Line {lineId}</Typography>
+        <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', right: 8, top: 8 }} alignItems="center">
+          <IconButton size="small" onClick={() => setFullscreen((value) => !value)} sx={{ color: '#fff' }}>
+            <OpenInFull fontSize="small" />
           </IconButton>
+          <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.45)' }} />
           <IconButton size="small" onClick={onClose} sx={{ color: '#fff' }}>
-            <CloseIcon fontSize="small" />
+            <Close fontSize="small" />
           </IconButton>
         </Stack>
       </Box>
 
       <DialogContent sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <TextField
-            size="small"
-            label="Line Item"
-            value={lineId}
-            InputProps={{ readOnly: true }}
-          />
-          <TextField
-            size="small"
-            type="date"
-            label={fieldLabel}
-            value={dateValue}
-            onChange={(event) => onDateChange(event.target.value)}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          <TextField
-            fullWidth
-            size="small"
-            multiline
-            minRows={3}
-            label="Notes"
-            value={notes}
-            onChange={(event) => onNotesChange(event.target.value)}
-          />
-        </Stack>
-
-        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
-          <Button size="small" variant="contained" onClick={onClose} sx={{ backgroundColor: poDetailsColors.darkBlue }}>
-            Cancel
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            onClick={onSubmit}
-            disabled={!dateValue}
-            sx={{ backgroundColor: poDetailsColors.darkBlue }}
-          >
-            Save Date
-          </Button>
-        </Stack>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}><TextField label="PO Line" fullWidth size="small" disabled value={lineId} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><TextField label="Material No" fullWidth size="small" disabled value={materialCode || ''} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><TextField label="Quantity" fullWidth size="small" disabled value={quantity || ''} /></Grid>
+          <Grid item xs={12} sm={6} md={3}><TextField label={currentLabel} fullWidth size="small" disabled value={currentDate || ''} /></Grid>
+          <Grid item xs={12}><TextField label={fieldLabel} fullWidth size="small" type="date" InputLabelProps={{ shrink: true }} value={date} onChange={(e) => onDateChange(e.target.value)} /></Grid>
+        </Grid>
       </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+        <Button size="small" variant="outlined" onClick={onClose}>Cancel</Button>
+        <Button size="small" variant="contained" onClick={onSubmit} disabled={!date} sx={{ backgroundColor: poDetailsColors.darkBlue }}>Submit Request</Button>
+      </DialogActions>
     </Dialog>
   );
 };

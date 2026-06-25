@@ -8,13 +8,23 @@ import {
   PurchaseOrder,
 } from '@/models';
 
+interface POHistoryResponse {
+  po_id: string;
+  history: Array<Record<string, unknown>>;
+}
+
+interface PODocumentsResponse {
+  po_id: string;
+  documents: Array<Record<string, unknown>>;
+}
+
 export const purchaseOrderService = {
   // Get PO list with filters and pagination
   getPOList: async (filters: POFilters = {}): Promise<POListResponse> => {
     const params = new URLSearchParams();
 
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
+    if (filters.page !== undefined) params.append('page', filters.page.toString());
+    if (filters.page_size !== undefined) params.append('page_size', filters.page_size.toString());
     if (filters.status) params.append('status', filters.status);
     if (filters.supplier_id) params.append('supplier_id', filters.supplier_id);
     if (filters.procurement_specialist_id)
@@ -38,7 +48,9 @@ export const purchaseOrderService = {
     if (filters.mrp_exceptions) params.append('mrp_exceptions', filters.mrp_exceptions);
     if (filters.delivery_date_from) params.append('delivery_date_from', filters.delivery_date_from);
     if (filters.delivery_date_to) params.append('delivery_date_to', filters.delivery_date_to);
-    if (filters.pinned_po_list) params.append('pinned_po_list', filters.pinned_po_list.join(','));
+    if (filters.pinned_po_list?.length) {
+      filters.pinned_po_list.forEach((poId) => params.append('pinned_po_list', poId));
+    }
 
     const url = `/po?${params.toString()}`;
     const startTime = performance.now();
@@ -60,8 +72,8 @@ export const purchaseOrderService = {
   getPinnedPOList: async (userId: string, filters: POFilters = {}): Promise<POListResponse> => {
     const params = new URLSearchParams();
 
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
+    if (filters.page !== undefined) params.append('page', filters.page.toString());
+    if (filters.page_size !== undefined) params.append('page_size', filters.page_size.toString());
 
     const url = `/po/pinned_po_list?user_id=${userId}&${params.toString()}`;
     const startTime = performance.now();
@@ -93,6 +105,95 @@ export const purchaseOrderService = {
   performPOAction: async (poId: string, payload: POActionRequest): Promise<PurchaseOrder> => {
     const response = await apiClient.post<PurchaseOrder>(`/po/${poId}/actions`, payload);
     return response.data;
+  },
+
+  getPOHistory: async (poId: string): Promise<Array<Record<string, unknown>>> => {
+    const response = await apiClient.get<POHistoryResponse>(`/po/${poId}/history`);
+    return response.data.history || [];
+  },
+
+  getPODocuments: async (poId: string): Promise<Array<Record<string, unknown>>> => {
+    const response = await apiClient.get<PODocumentsResponse>(`/po/${poId}/documents`);
+    return response.data.documents || [];
+  },
+
+  downloadPODocument: async (
+    poId: string,
+    documentId: string
+  ): Promise<{ blob: Blob; fileName: string | null }> => {
+    const response = await apiClient.get<Blob>(`/po/${poId}/documents/${documentId}/download`, {
+      responseType: 'blob',
+    });
+
+    const disposition = response.headers['content-disposition'] as string | undefined;
+    const fileNameMatch = disposition?.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
+    const extractedFileName = fileNameMatch?.[1];
+    const fileName = extractedFileName
+      ? decodeURIComponent(extractedFileName.replace(/\"/g, '').trim())
+      : null;
+
+    return { blob: response.data, fileName };
+  },
+
+  performPODocumentAction: async (
+    poId: string,
+    documentId: string,
+    payload: { action: string; notes?: string }
+  ): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post<{ document: Record<string, unknown> }>(
+      `/po/${poId}/documents/${documentId}/actions`,
+      payload
+    );
+    return response.data.document;
+  },
+
+  replacePODocument: async (
+    poId: string,
+    documentId: string,
+    payload: { file: File; comments?: string }
+  ): Promise<Record<string, unknown>> => {
+    const form = new FormData();
+    form.append('file', payload.file);
+    form.append('comments', payload.comments || '');
+
+    const response = await apiClient.post<{ document: Record<string, unknown> }>(
+      `/po/${poId}/documents/${documentId}/replace`,
+      form,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    return response.data.document;
+  },
+
+  uploadPODocument: async (
+    poId: string,
+    payload: {
+      line_item_id: string;
+      file: File;
+      document_tag_to?: string;
+      comments?: string;
+    }
+  ): Promise<Record<string, unknown>> => {
+    const form = new FormData();
+    form.append('line_item_id', payload.line_item_id);
+    form.append('file', payload.file);
+    form.append('document_tag_to', payload.document_tag_to || 'LINE_ITEM');
+    form.append('comments', payload.comments || '');
+
+    const response = await apiClient.post<{ document: Record<string, unknown> }>(
+      `/po/${poId}/documents/upload`,
+      form,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.document;
   },
 
   getPODropdownConfig: async (): Promise<PODropdownConfig> => {

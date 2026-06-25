@@ -248,9 +248,7 @@ const PurchaseOrders: React.FC = () => {
         advanceFilters: Object.keys(advanceFilters).length,
       });
 
-      if (user?.role === 'SUPPLIER') {
-        filters.supplier_id = user.id;
-      } else if (user?.role === 'PROCUREMENT_SPECIALIST') {
+      if (user?.role === 'PROCUREMENT_SPECIALIST') {
         filters.procurement_specialist_id = user.id;
       }
       //console.log("Filters Sent:", filters);
@@ -971,7 +969,7 @@ const handleSearchChange = useCallback(
       //   ),
       // },
     ],
-    [pinnedPOIds, togglePin, theme, statusColors]
+    [theme, statusColors,pinnedMRPLineItemIds,toggleMRPLinePin]
   );
 
   //saperate page view for supplier & PS
@@ -1221,6 +1219,9 @@ const handleSearchChange = useCallback(
       sortModel.sort_order,
       viewMode,
       handleCurrentPinFilterChange,
+      availableSites,
+      selectedSites,
+      handleSelectedSitesChange,
       currentPinFilter,
       currentPinnedCount,
       user?.role,
@@ -1230,6 +1231,53 @@ const handleSearchChange = useCallback(
       setPage,
     ]
   );
+  
+console.log(columns.map((c) => c.field));
+
+
+  //saperate page view for supplier & PS
+  // const supplierColumns = React.useMemo(
+  //   () =>
+  //     columns.filter((col) =>
+  //       [
+  //         'pin',
+  //         'po_number',
+  //         'status',
+  //         'supplier_name',
+  //         'total_value',
+  //         'line_items',
+  //         'revision_changes',
+  //         'buyer_name',
+  //         'buyer_email',
+  //         'buyer_phone',
+  //         'site',
+  //       ].includes(col.field)
+  //     ),
+  //   [columns]
+  // );
+
+  // const gridColumns = React.useMemo(
+  //   () => (user?.role === 'SUPPLIER' ? supplierColumns : columns),
+  //   [user?.role, supplierColumns, columns]
+  // );
+
+  // const displayedRows = React.useMemo(() => {
+  //   const rows = pinFilter === 'pinned' ? pinnedPOs : purchaseOrders;
+
+  //   switch (selectedTab) {
+  //     case 1: // OPEN PO
+  //       return rows.filter(
+  //         (po) => po.status === 'CREATED' || po.status === 'IN_PROGRESS' || po.status === 'APPROVED'
+  //       );
+
+  //     case 2: // PASS DELIVERY DATE
+  //       return rows;
+
+  //     case 0: // ALL PO
+  //     default:
+  //       return rows;
+  //   }
+  // }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
 
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
@@ -1376,7 +1424,7 @@ const handleSearchChange = useCallback(
             // top: '25%',
             // left: '68%',
             // transform: 'translate(-50%, -20%)',
-            // borderRadius: 2,
+            // borderRadius: 1,
             // boxShadow: 24,
           },
         }}

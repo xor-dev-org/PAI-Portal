@@ -85,7 +85,7 @@ const Login: React.FC = () => {
           elevation={6} 
           sx={{ 
             p: 4, 
-            borderRadius: 2,
+            borderRadius: 1,
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           }}
         >

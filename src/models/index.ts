@@ -11,9 +11,13 @@ export interface User {
   phone?: string;
   email: string;
   role: UserRole;
+  password?: string;
   supplier_number?: string;
   address?: string;
   site?: string;
+  supplier_msid?: number | null;
+  pinned_rows?: string[];
+  line_pinned_rows?: string[];
 }
 
 export interface AuthResponse {
@@ -150,6 +154,7 @@ export interface PurchaseOrder {
   currency: string;
   total_value: number;
   delivery_date: string;
+  mrp_need_by_date?: string | null;
   payment_terms: string;
   mrp_exceptions: string;
   created_date: string;
@@ -167,9 +172,17 @@ export interface PurchaseOrder {
 export interface POActionRequest {
   action: string;
   line_item_id: string;
+  line_item_ids?: string[];
   notes?: string;
   move_in_date?: string;
   move_out_date?: string;
+  splits?: Array<{ quantity: number; delivery_date: string }>;
+  proposed_quantity?: number | null;
+  proposed_unit_price?: number | null;
+  proposed_delivery_date?: string | null;
+  concession_reason?: string;
+  concession_description?: string;
+  document_id?: string;
 }
 
 export interface PODropdownConfig {
@@ -261,14 +274,14 @@ export interface Delegation {
   po_number: string;
   supplier_name: string;
   delegated_from_id: string;
-  delegated_from_name: string;
+  delegated_from_name?: string;
   delegated_to_id: string;
-  delegated_to_name: string;
+  delegated_to_name?: string;
   role: string;
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
   status: DelegationStatus;
-  created_date: string;
+  created_date: string | null;
   total_value?: number;
 }
 
@@ -285,4 +298,9 @@ export interface DelegationListResponse {
   page_size: number;
   total: number;
   data: Delegation[];
+}
+
+
+export interface AIChatResponse {
+  output: string;
 }
