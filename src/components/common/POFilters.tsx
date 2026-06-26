@@ -140,7 +140,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   return (
     <Paper
       sx={{
-        p: 1,
+        p: 0,
         mb: 0,
         width: '100%',
         border: '1.5px solid #CFCFCF',

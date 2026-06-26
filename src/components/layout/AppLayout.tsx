@@ -42,12 +42,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 1,
+          p: 0,
           width: { sm: `calc(100% - 240px)` },
         }}
       >
         <Toolbar />
-        <Container maxWidth="xl" sx={{ mt: 4, mb: 1 }}>
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 1, p:0 }}>
           {children}
         </Container>
       </Box>

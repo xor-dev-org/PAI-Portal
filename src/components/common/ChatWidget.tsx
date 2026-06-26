@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useLayoutEffect } from 'react';
 import {
   Avatar,
   Badge,
@@ -25,15 +25,17 @@ import { ChatClient } from '@azure/communication-chat';
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
 import { acsChatService } from '@/api/services/acsChatService';
 import { authService } from '@/api/services/authService';
+import { CircularProgress } from '@mui/material';
 
 export type ChatMessage = {
-  id: number;
+  id: string | number;
   sender: 'me' | 'other';
   text: string;
   time: string;
   fileName?: string;
   fileUrl?: string;   // Local or remote URL for preview/download
   fileType?: string;  // MIME type or category (e.g., 'image', 'document')
+  read?: boolean;
 };
 
 export type Conversation = {
@@ -128,11 +130,24 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [isInitializingACS, setIsInitializingACS] = useState(false);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTypingSentRef = useRef(0);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   // Auto-scroll to the bottom whenever a new message lands or chat changes
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // const scrollToBottom = () => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // };
 
   useEffect(() => {
     if (open) {
@@ -211,6 +226,62 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     () => conversations.find((item) => item.id === selectedId) ?? conversations[0],
     [conversations, selectedId]
   );
+
+    useEffect(() => {
+
+      if (!threadClient || !open || selectedConversation?.id === -999) {
+          return;
+      }
+
+      const unreadMessages = acsMessages.filter(
+          msg =>
+              msg.sender === "other" &&
+              !msg.readReceiptSent
+      );
+
+      if (unreadMessages.length === 0) {
+          return;
+      }
+
+      const sendReceipts = async () => {
+
+          try {
+
+              for (const msg of unreadMessages) {
+
+                  await threadClient.sendReadReceipt({
+                      chatMessageId: msg.id
+                  });
+
+              }
+
+              setAcsMessages(prev =>
+                  prev.map(msg =>
+                      unreadMessages.some(
+                          m => m.id === msg.id
+                      )
+                          ? {
+                                ...msg,
+                                readReceiptSent: true
+                            }
+                          : msg
+                  )
+              );
+
+          } catch (err) {
+              console.error(err);
+          }
+
+      };
+
+      void sendReceipts();
+
+  }, [
+      threadClient,
+      open,
+      selectedConversation?.id,
+      acsMessages
+  ]);
 
   const toggleOpen = () => setOpen((prev) => !prev);
 
@@ -379,6 +450,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
           )
         );
 
+        setTimeout(scrollToBottom, 0);
+
         const response = await aiAssistantService.askQuestion(question);
 
         setIsThinking(false);
@@ -460,7 +533,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     await client.startRealtimeNotifications();
 
     if (!messageHandlerRef.current) {
-      messageHandlerRef.current = (event: any) => {
+      messageHandlerRef.current = async (event: any) => {
         if (event.threadId !== session.data.threadId) {
           return;
         }
@@ -481,16 +554,99 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
             id: messageId,
             text: event.message,
             sender: isCurrentUser ? 'me' : 'other',
+            ...(isCurrentUser
+            ? { read: false }
+            : { readReceiptSent: false }),
             time: event.createdOn ? formatTime(new Date(event.createdOn)) : formatTime(new Date()),
           },
         ]);
+
       };
 
-      client.on('chatMessageReceived', messageHandlerRef.current);
+      client.on("chatMessageReceived", messageHandlerRef.current);
+
+      client.on(
+        "typingIndicatorReceived",
+        (event: any) => {
+
+          if (
+            event.threadId !== session.data.threadId
+          ) {
+            return;
+          }
+
+          if (
+            isCurrentUserMessage(
+              event,
+              userId,
+              currentUser.name
+            )
+          ) {
+            return;
+          }
+
+          setIsOtherUserTyping(true);
+
+          if (typingTimeoutRef.current) {
+            clearTimeout(
+              typingTimeoutRef.current
+            );
+          }
+
+          typingTimeoutRef.current =
+            setTimeout(() => {
+
+              setIsOtherUserTyping(false);
+
+            }, 3000);
+
+        }
+      );
+
+      client.on(
+        'readReceiptReceived',
+        (event: any) => {
+
+          console.log('Read Receipt', event);
+
+          setAcsMessages(prev =>
+            prev.map(msg =>
+              msg.id === String(event.chatMessageId)
+                ? {
+                    ...msg,
+                    read: true
+                  }
+                : msg
+            )
+          );
+
+        }
+      );
     }
       } finally {
     setIsInitializingACS(false);
   }
+  };
+
+  const sendTypingNotification = async () => {
+    if (!threadClient) {
+      return;
+    }
+
+    const now = Date.now();
+
+    // Don't send too frequently
+    if (now - lastTypingSentRef.current < 1000) {
+      return;
+    }
+
+    lastTypingSentRef.current = now;
+
+    try {
+      await threadClient.sendTypingNotification();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   useEffect(() => {
@@ -504,6 +660,28 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     void initializeACS(activeChatContext);
   }, [activeChatContext, open, selectedConversation?.id, threadClient]);
+
+  useEffect(() => {
+
+      return () => {
+
+          if (typingTimeoutRef.current) {
+              clearTimeout(
+                  typingTimeoutRef.current
+              );
+          }
+
+      };
+
+  }, []);
+
+  useLayoutEffect(() => {
+    scrollToBottom();
+  }, [
+    acsMessages,
+    selectedConversation?.messages?.length,
+    isThinking,
+  ]);
 
   return (
     <Box sx={{ position: 'fixed', bottom: 60, right: 16, zIndex: (theme) => theme.zIndex.drawer + 10 }}>
@@ -545,6 +723,26 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
           {/* Chat Window */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {isInitializingACS && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        zIndex: 10,
+                        bgcolor: 'rgba(255,255,255,0.7)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: 2,
+                      }}
+                    >
+                      <CircularProgress />
+                      <Typography variant="body2">
+                        Loading chat...
+                      </Typography>
+                    </Box>
+                  )}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, backgroundColor: theme.palette.background.paper }}>
               <Box>
                 <Typography variant="subtitle1">
@@ -560,7 +758,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
             </Box>
 
             {/* Message Stream */}
-            <Box sx={{ flexGrow: 1, px: 2, py: 2, overflowY: 'auto', backgroundColor: theme.palette.background.default }}>
+            <Box ref={messagesContainerRef} sx={{ flexGrow: 1, px: 2, py: 2, overflowY: 'auto', backgroundColor: theme.palette.background.default }}>
               {
                 (selectedConversation?.id === -999
                   ? selectedConversation?.messages
@@ -646,9 +844,42 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                       </ReactMarkdown>
                     )}
                     
-                    <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', mt: 0.5, px: message.fileType === 'image' ? 0.5 : 0 }}>
+                    <Box
+                        sx={{
+                            display:'flex',
+                            justifyContent:'flex-end',
+                            gap:0.5
+                        }}
+                      >
+
+                      <Typography
+                        variant="caption"
+                      >
+
                       {message.time}
-                    </Typography>
+
+                      </Typography>
+
+                      {
+                      message.sender==="me" && (
+
+                          <Typography
+                            variant="caption"
+                          >
+
+                            {
+                              message.read
+                                ? "✓✓"
+                                : "✓"
+                            }
+
+                          </Typography>
+
+                      )
+
+                      }
+
+                      </Box>
                   </Paper>
                 </Box>
               ))}
@@ -732,6 +963,77 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                 </Box>
               )}
 
+              {
+                isOtherUserTyping && (
+                <Box
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        px: 2,
+                        py: 1,
+                        minHeight: 32,
+                    }}
+                >
+                    <Avatar
+                        sx={{
+                            width: 22,
+                            height: 22,
+                            fontSize: 11,
+                        }}
+                    >
+                        {selectedConversation?.name?.charAt(0)}
+                    </Avatar>
+
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            backgroundColor: "#F3F6FB",
+                            px: 1.5,
+                            py: 0.75,
+                            borderRadius: "16px",
+                        }}
+                    >
+                        {[0, 1, 2].map((i) => (
+                            <Box
+                                key={i}
+                                sx={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: "50%",
+                                    bgcolor: "primary.main",
+                                    animation: "typingAnimation 1.2s infinite ease-in-out",
+                                    animationDelay: `${i * 0.2}s`,
+                                    "@keyframes typingAnimation": {
+                                        "0%, 80%, 100%": {
+                                            opacity: 0.3,
+                                            transform: "translateY(0px)",
+                                        },
+                                        "40%": {
+                                            opacity: 1,
+                                            transform: "translateY(-4px)",
+                                        },
+                                    },
+                                }}
+                            />
+                        ))}
+                    </Box>
+
+                    <Typography
+                        variant="caption"
+                        sx={{
+                            color: "text.secondary",
+                            fontStyle: "italic",
+                            userSelect: "none",
+                        }}
+                    >
+                        {selectedConversation?.name} is typing...
+                    </Typography>
+                </Box>
+                )
+              }
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 <input 
                   type="file" 
@@ -754,7 +1056,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                   size="small" 
                   placeholder={selectedFile ? "Add a caption..." : `Message ${selectedConversation?.name || ''}...`} 
                   value={draft} 
-                  onChange={(event) => setDraft(event.target.value)} 
+                  onChange={(event) => {
+
+                      setDraft(event.target.value);
+
+                      if (selectedConversation?.id !== -999) {
+                          sendTypingNotification();
+                      }
+
+                  }}
                   // disabled={isInitializingACS}
                   onKeyDown={(event) => {
                       if (isInitializingACS) {

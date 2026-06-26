@@ -1239,7 +1239,8 @@ console.log(columns.map((c) => c.field));
           display: 'flex',
           alignItems: 'center',
           gap: 1.5,
-          mb: 1,
+          mb: 0,
+          p:0,
         }}
       >
         <Box
@@ -1279,7 +1280,7 @@ console.log(columns.map((c) => c.field));
           color: 'black',
           fontSize: '1rem',
           fontWeight: 400,
-          mb: 4,
+          mb: 2,
         }}
       >
         Updated on {new Date().toLocaleString()}
@@ -1291,7 +1292,7 @@ console.log(columns.map((c) => c.field));
         </Alert>
       )}
       {/* TODO: Optimise this block if selected */}
-      <Box sx={{ height: appliedFilters.length > 0 ? '80vh' : '80vh', width: '100%' }}>
+      <Box sx={{ height: appliedFilters.length > 0 ? '76vh' : '78vh', width: '100%' }}>
         <DataGrid
           rows={currentRows}
           columns={currentColumns}
