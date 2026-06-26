@@ -1,6 +1,6 @@
 import { LineItem, PurchaseOrder } from '@/models';
 
-export const isSupplierRole = (role?: string) => role?.toUpperCase() === 'SUPPLIER';
+export const isSupplierRole = (role?: string) => String(role || '').trim().toUpperCase() === 'SUPPLIER';
 
 export const getTabs = (role?: string) => {
   if (isSupplierRole(role)) {

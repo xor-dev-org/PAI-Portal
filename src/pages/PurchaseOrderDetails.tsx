@@ -90,8 +90,15 @@ const PurchaseOrderDetails: React.FC = () => {
 
   const reloadHistory = useCallback(async () => {
     if (!id) return;
-    const rows = (await purchaseOrderService.getPOHistory(id)) as HistoryRow[];
-    setHistoryRows(rows || []);
+    const rows = ((await purchaseOrderService.getPOHistory(id)) as HistoryRow[]) || [];
+    const sortedRows = [...rows].sort((a, b) => {
+      const aTime = new Date(a.created_at || a.timestamp || '').getTime();
+      const bTime = new Date(b.created_at || b.timestamp || '').getTime();
+      const safeATime = Number.isNaN(aTime) ? 0 : aTime;
+      const safeBTime = Number.isNaN(bTime) ? 0 : bTime;
+      return safeBTime - safeATime;
+    });
+    setHistoryRows(sortedRows);
   }, [id]);
 
   const reloadDocuments = useCallback(async () => {

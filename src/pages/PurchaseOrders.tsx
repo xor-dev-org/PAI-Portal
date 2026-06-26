@@ -32,7 +32,6 @@ import {
   POFilters as POFiltersType,
   AdvanceFilters,
   PurchaseOrderStatus,
-  User,
 } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
 import POFilters from '@/components/common/POFilters';
@@ -43,6 +42,12 @@ import { logger } from '@/services/logger';
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 import { userService } from '@/api/services/userService';
+
+type LineItemTabRow = {
+  id: string;
+  po_id: string;
+  [key: string]: unknown;
+};
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -59,7 +64,7 @@ const PurchaseOrders: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [procurementSpecialists, setProcurementSpecialists] = useState<User[]>([]);
+  const [lineItemRows, setLineItemRows] = useState<LineItemTabRow[]>([]);
 
   const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
   const [rowCount, setRowCount] = useState(0);
@@ -169,19 +174,6 @@ const PurchaseOrders: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadProcurementSpecialists = async () => {
-      try {
-        const users = await userService.getUsersByRole('PROCUREMENT_SPECIALIST');
-        setProcurementSpecialists(users);
-      } catch (error) {
-        console.error('Failed to load procurement specialists', error);
-      }
-    };
-
-    loadProcurementSpecialists();
-  }, []);
-
-  useEffect(() => {
     const loadAvailableSites = async () => {
       try {
         const sites = await purchaseOrderService.getAvailableSites();
@@ -204,7 +196,10 @@ const PurchaseOrders: React.FC = () => {
     if (!sitesLoaded) {
       return;
     }
+
     const startTime = performance.now();
+    const isLineTabRequest = selectedTab === 2 || selectedTab === 3;
+
     try {
       setLoading(true);
       setError(null);
@@ -212,17 +207,6 @@ const PurchaseOrders: React.FC = () => {
       console.log('Fetching purchase orders with sort model:', sortModel);
       console.log('-----------pinnedOrNot:', pinFilter);
       // console.log('pinnedList:', pinnedPOIds);
-
-      const filters: POFiltersType = {
-        page: page + 1,
-        page_size: pageSize,
-        status: statusFilter,
-        sort_by: sortModel.sort_by,
-        sort_order: sortModel.sort_order,
-        search: searchInput,
-        // sites: selectedSites,
-        ...advanceFilters,
-      };
 
       if (user?.id) {
         const pinnedPOResult = await userService.getPinnedRows(user.id, 'po');
@@ -238,6 +222,49 @@ const PurchaseOrders: React.FC = () => {
         setPinnedPOs(pinnedPOList.data);
         setPinnedPOsRowCount(pinnedPOList.total);
       }
+
+      if (isLineTabRequest) {
+        const lineItemFilters: POFiltersType = {
+          search: searchInput,
+          sort_by: sortModel.sort_by,
+          sort_order: sortModel.sort_order,
+          tab_mode: selectedTab === 2 ? 'ready_to_review' : 'mrp_exception',
+          include_line_items_only: true,
+        };
+
+        if (user?.role === 'SUPPLIER') {
+          lineItemFilters.supplier_id = String(user.supplier_msid ?? user.id);
+        }
+
+        const lineResponse = await purchaseOrderService.getPOList(lineItemFilters);
+
+        setLineItemRows(lineResponse.data as unknown as LineItemTabRow[]);
+        setPurchaseOrders([]);
+        setRowCount(lineResponse.total);
+
+        logger.info('Line item tab data fetched', {
+          tab: selectedTab === 2 ? 'ready_to_review' : 'mrp_exception',
+          durationMs: Math.round(performance.now() - startTime),
+          rowCount: lineResponse.total,
+        });
+
+        return;
+      }
+
+      const filters: POFiltersType = {
+        page: page + 1,
+        page_size: pageSize,
+        status: statusFilter,
+        sort_by: sortModel.sort_by,
+        sort_order: sortModel.sort_order,
+        search: searchInput,
+        ...advanceFilters,
+      };
+
+      if (user?.role === 'SUPPLIER') {
+        filters.supplier_id = String(user.supplier_msid ?? user.id);
+      }
+
       console.log('Final filters:', filters);
 
       logger.info('Fetching purchase orders', {
@@ -248,14 +275,12 @@ const PurchaseOrders: React.FC = () => {
         advanceFilters: Object.keys(advanceFilters).length,
       });
 
-      if (user?.role === 'PROCUREMENT_SPECIALIST') {
-        filters.procurement_specialist_id = user.id;
-      }
       //console.log("Filters Sent:", filters);
       console.log('Selected Sites Sent:', selectedSites);
       const response = await purchaseOrderService.getPOList(filters);
       console.log('po resp: ', response);
       setPurchaseOrders(response.data);
+      setLineItemRows([]);
       setRowCount(response.total);
 
       logger.info('Purchase orders fetched', {
@@ -276,6 +301,7 @@ const PurchaseOrders: React.FC = () => {
   }, [
     page,
     pageSize,
+    selectedTab,
     statusFilter,
     sortModel,
     searchInput,
@@ -401,16 +427,6 @@ const handleSearchChange = useCallback(
     setAdvancefilters({ ...advanceTempFilters });
     setShowAdvancedFilters(false);
   };
-
-  const procurementSpecialistMap = React.useMemo(() => {
-    return procurementSpecialists.reduce(
-      (acc, ps) => {
-        acc[ps.id] = ps;
-        return acc;
-      },
-      {} as Record<string, User>
-    );
-  }, [procurementSpecialists]);
 
   const statusColors = React.useMemo(
     () =>
@@ -1030,88 +1046,18 @@ const handleSearchChange = useCallback(
     }
   }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
 
-  //Show POtoreview tabs data
-  const flattenedLineItems = React.useMemo(() => {
-    return purchaseOrders.flatMap((po) =>
-      po.line_items.map((item) => ({
-        id: `${po.id}-${item.id}`,
-
-        // PO fields
-        po_id: po.id,
-        po_number: po.po_number,
-        supplier_name: po.supplier_name,
-        supplier_id: po.supplier_id,
-        supplier_email: po.supplier_email,
-        site: po.site,
-        status: po.status,
-        source_system: po.source_system,
-        revision_changes: po.revision_changes,
-        mrp_exceptions: po.mrp_exceptions,
-        delivery_date: po.delivery_date,
-        currency: po.currency,
-
-        // Line Item fields
-        line_id: item.id,
-        line_number: item.line_number,
-        material_code: item.material_code,
-        description: item.description,
-
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        net_value: item.net_value,
-
-        updated_quantity: item.updated_quantity,
-        updated_unit_price: item.updated_unit_price,
-        updated_net_value: item.updated_net_value,
-
-        required_in_house_date: item.required_in_house_date,
-        updated_delivery_date: item.updated_delivery_date,
-
-        supplier_confirmation_date: item.supplier_confirmation_date,
-        recommendation: item.recommendation,
-        exception_type: item.exception_type,
-        mrp_action_required: item.mrp_action_required,
-        concession: item.concession,
-
-        // For now we are using PO status in PO review tab
-        line_status: po.status,
-      }))
-    );
-  }, [purchaseOrders]);
-
-  //MRP exception rows
-  const mrpExceptionRows = React.useMemo(() => {
-    return flattenedLineItems.filter((row) => {
-      const hasRecommendation =
-        row.recommendation !== null &&
-        row.recommendation !== undefined &&
-        row.recommendation !== '';
-
-      const hasMrpAction = row.mrp_action_required === true;
-
-      return hasRecommendation || hasMrpAction;
-    });
-  }, [flattenedLineItems]);
-
-  // console.log('MRP Exception Rows:', mrpExceptionRows.length);
-  // console.log('MRP Exception Sample:', mrpExceptionRows[0]);
-
   const currentRows = React.useMemo(() => {
     switch (selectedTab) {
       case 2: {
-        // PO TO REVIEW
-        const inProgressRows = flattenedLineItems.filter((row) => row.status === 'IN_PROGRESS');
-
         return currentPinFilter === 'pinned'
-          ? inProgressRows.filter((row) => pinnedPOToReviewLineItemIds.includes(row.id))
-          : inProgressRows;
+          ? lineItemRows.filter((row) => pinnedPOToReviewLineItemIds.includes(row.id))
+          : lineItemRows;
       }
 
       case 3: {
-        // MRP EXCEPTION
         return currentPinFilter === 'pinned'
-          ? mrpExceptionRows.filter((row) => pinnedMRPLineItemIds.includes(row.id))
-          : mrpExceptionRows;
+          ? lineItemRows.filter((row) => pinnedMRPLineItemIds.includes(row.id))
+          : lineItemRows;
       }
 
       default:
@@ -1119,8 +1065,7 @@ const handleSearchChange = useCallback(
     }
   }, [
     selectedTab,
-    flattenedLineItems,
-    mrpExceptionRows,
+    lineItemRows,
     displayedRows,
     currentPinFilter,
     pinnedPOToReviewLineItemIds,
@@ -1177,7 +1122,10 @@ const handleSearchChange = useCallback(
           onSelectedSitesChange={handleSelectedSitesChange}
           userRole={user?.role}
           selectedTab={selectedTab}
-          onTabChange={setSelectedTab}
+          onTabChange={(tab) => {
+            setSelectedTab(tab);
+            setPage(0);
+          }}
         />
 
         <Box height={appliedFilters.length > 0 ? '4vh' : '0vh'} sx={{ mb: 0, pl: 1 }}>
@@ -1358,7 +1306,7 @@ console.log(columns.map((c) => c.field));
           }
           rowHeight={35}
           pagination
-          paginationMode="server"
+          paginationMode={isLineItemTab ? 'client' : 'server'}
           pageSizeOptions={[10, 25, 50, 60, 100]}
           loading={loading}
           onPaginationModelChange={handlePaginationModelChange}
@@ -1384,14 +1332,22 @@ console.log(columns.map((c) => c.field));
 
             setPage(0);
           }}
-          onRowClick={(params) => handleGridRowClick(params.row)}
+          onRowClick={(params) => {
+            if (!isLineItemTab) {
+              handleGridRowClick(params.row);
+            }
+          }}
           localeText={{
             noRowsLabel:
-              selectedSites.length === 0 ? 'No sites selected' : 'No purchase orders found',
+              isLineItemTab
+                ? 'No matching line items found'
+                : selectedSites.length === 0
+                  ? 'No sites selected'
+                  : 'No purchase orders found',
           }}
           sx={{
             '& .MuiDataGrid-row': {
-              cursor: 'pointer',
+              cursor: isLineItemTab ? 'default' : 'pointer',
               '&:hover': {
                 backgroundColor: '#F8EFE7',
               },

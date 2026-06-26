@@ -229,6 +229,8 @@ export interface POFilters {
 
   mrp_exceptions?: string;
   pinned_po_list?: string[];
+  tab_mode?: 'ready_to_review' | 'mrp_exception';
+  include_line_items_only?: boolean;
 }
 
 export interface AdvanceFilters {

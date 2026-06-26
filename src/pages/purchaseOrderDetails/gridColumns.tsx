@@ -5,7 +5,7 @@ import { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 
 import { LineItem } from '@/models';
 import { DocsRow } from './types';
-import { formatLineId } from './utils';
+import { formatLineId, isSupplierRole } from './utils';
 
 type LineColumnOptions = {
   pinnedLineIds: string[];
@@ -168,7 +168,7 @@ export const buildSupplierLineColumns = (lineColumns: GridColDef[]) => {
 };
 
 export const buildDocumentColumns = ({ role, onReviewDocument, onDownloadDocument, onReplaceDocument }: DocumentColumnOptions): GridColDef[] => {
-  const supplier = role === 'SUPPLIER';
+  const supplier = isSupplierRole(role);
 
   return [
     {
