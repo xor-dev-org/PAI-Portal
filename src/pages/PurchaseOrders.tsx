@@ -196,6 +196,15 @@ const PurchaseOrders: React.FC = () => {
     if (!sitesLoaded) {
       return;
     }
+    if (selectedSites.length === 0) {
+      setPurchaseOrders([]);
+      setLineItemRows([]);
+      setRowCount(0);
+      setPinnedPOs([]);
+      setPinnedPOsRowCount(0);
+      setLoading(false);
+      return;
+    }
 
     const startTime = performance.now();
     const isLineTabRequest = selectedTab === 2 || selectedTab === 3;
@@ -231,6 +240,11 @@ const PurchaseOrders: React.FC = () => {
           tab_mode: selectedTab === 2 ? 'ready_to_review' : 'mrp_exception',
           include_line_items_only: true,
         };
+        
+        if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
+          lineItemFilters.site = selectedSites.join(',');
+        }
+
 
         if (user?.role === 'SUPPLIER') {
           lineItemFilters.supplier_id = String(user.supplier_msid ?? user.id);
@@ -260,6 +274,11 @@ const PurchaseOrders: React.FC = () => {
         search: searchInput,
         ...advanceFilters,
       };
+      
+      if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
+        filters.site = selectedSites.join(',');
+      }
+
 
       if (user?.role === 'SUPPLIER') {
         filters.supplier_id = String(user.supplier_msid ?? user.id);
