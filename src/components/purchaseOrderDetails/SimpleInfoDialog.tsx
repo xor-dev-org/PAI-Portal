@@ -7,6 +7,8 @@ import { poDetailsColors } from './constants';
 type SimpleInfoDialogProps = {
   open: boolean;
   title: string;
+  submitLabel?: string;
+  poNumber?: string;
   lineId: string;
   materialCode?: string;
   quantity?: number;
@@ -20,6 +22,8 @@ type SimpleInfoDialogProps = {
 const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
   open,
   title,
+  submitLabel,
+  poNumber,
   lineId,
   materialCode,
   quantity,
@@ -34,6 +38,8 @@ const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
   void deliveryDate;
 
   const [fullscreen, setFullscreen] = useState(false);
+  const poSuffix = poNumber ? ` - PO ${poNumber}` : '';
+  const headerSuffix = lineId ? ` - PO Line ${lineId}` : '';
 
   return (
     <Dialog
@@ -45,7 +51,7 @@ const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
       PaperProps={{ sx: { borderRadius: fullscreen ? 0 : 1.5 } }}
     >
       <Box sx={{ px: 2, py: 1, backgroundColor: poDetailsColors.darkBlue, color: '#fff', position: 'relative' }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{title} - PO Line {lineId}</Typography>
+        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{`${title}${poSuffix}${headerSuffix}`}</Typography>
         <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', right: 8, top: 8 }} alignItems="center">
           <IconButton size="small" onClick={() => setFullscreen((v) => !v)} sx={{ color: 'common.white' }}>
             <OpenInFull fontSize="small" />
@@ -63,7 +69,9 @@ const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Button size="small" variant="outlined" onClick={onClose}>Cancel</Button>
-        <Button size="small" variant="contained" onClick={onSubmit} sx={{ backgroundColor: poDetailsColors.darkBlue }}>Submit Info Request</Button>
+        <Button size="small" variant="contained" onClick={onSubmit} sx={{ backgroundColor: poDetailsColors.darkBlue }}>
+          {submitLabel || 'Submit'}
+        </Button>
       </DialogActions>
     </Dialog>
   );

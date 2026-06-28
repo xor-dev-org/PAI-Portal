@@ -18,6 +18,10 @@ interface PODocumentsResponse {
   documents: Array<Record<string, unknown>>;
 }
 
+interface PODocumentTagsResponse {
+  tags: string[];
+}
+
 export const purchaseOrderService = {
   // Get PO list with filters and pagination
   getPOList: async (filters: POFilters = {}): Promise<POListResponse> => {
@@ -118,6 +122,11 @@ export const purchaseOrderService = {
     return response.data.documents || [];
   },
 
+  getPODocumentTags: async (): Promise<string[]> => {
+    const response = await apiClient.get<PODocumentTagsResponse>('/po/config/document-tags');
+    return response.data.tags || [];
+  },
+
   downloadPODocument: async (
     poId: string,
     documentId: string
@@ -151,11 +160,12 @@ export const purchaseOrderService = {
   replacePODocument: async (
     poId: string,
     documentId: string,
-    payload: { file: File; comments?: string }
+    payload: { file: File; comments?: string; document_tag_to?: string }
   ): Promise<Record<string, unknown>> => {
     const form = new FormData();
     form.append('file', payload.file);
     form.append('comments', payload.comments || '');
+    form.append('document_tag_to', payload.document_tag_to || 'LINE_ITEM');
 
     const response = await apiClient.post<{ document: Record<string, unknown> }>(
       `/po/${poId}/documents/${documentId}/replace`,

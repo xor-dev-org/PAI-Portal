@@ -12,11 +12,16 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   // State to track if a sub-page wants to hide the global chat
   const [hideGlobalChat, setHideGlobalChat] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleSidebarToggle = () => {
+    setSidebarOpen((prev) => !prev);
   };
 
   // Listen for override events from child pages
@@ -36,14 +41,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <Header onMenuClick={handleDrawerToggle} />
-      <Sidebar mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} />
+      <Header onMenuClick={handleSidebarToggle} />
+      <Sidebar mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} desktopOpen={sidebarOpen} />
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 0,
-          width: { sm: `calc(100% - 240px)` },
+          width: { sm: sidebarOpen ? `calc(100% - 240px)` : '100%' },
+          transition: 'width 0.2s ease',
         }}
       >
         <Toolbar />

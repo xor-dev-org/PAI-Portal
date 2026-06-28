@@ -10,7 +10,7 @@ import {
 } from '@mui/lab';
 
 import { HistoryRow } from './types';
-import { formatActionLabel, getActionVisual } from './utils';
+import { formatActionLabel } from './utils';
 
 type HistoryTabProps = {
   historyRows: HistoryRow[];
@@ -32,13 +32,15 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ historyRows }) => {
         }}
       >
         {historyRows.map((row, idx) => {
-          const visual = getActionVisual(row.action);
           const actionLabel = formatActionLabel(row.action);
           const roleLabel = String(row.actor_role || 'SYSTEM').toUpperCase();
+          const isSupplierAction = roleLabel.includes('SUPPLIER');
+          const roleColor: 'info' | 'warning' = isSupplierAction ? 'info' : 'warning';
+          const roleIconColor = isSupplierAction ? 'info.main' : 'warning.main';
           return (
             <TimelineItem key={`${row.id || idx}`}>
               <TimelineSeparator>
-                <HistoryOutlined color={visual.color} />
+                <HistoryOutlined sx={{ color: roleIconColor }} />
                 {idx < historyRows.length - 1 ? <TimelineConnector sx={{ bgcolor: 'grey.500' }} /> : null}
               </TimelineSeparator>
 
@@ -51,7 +53,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ historyRows }) => {
                     <Chip
                       size="small"
                       label={roleLabel}
-                      color={visual.color}
+                      color={roleColor}
                       sx={{ height: 18, borderRadius: 4 }}
                     />
                   </Stack>

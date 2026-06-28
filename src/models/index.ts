@@ -229,7 +229,7 @@ export interface POFilters {
 
   mrp_exceptions?: string;
   pinned_po_list?: string[];
-  tab_mode?: 'ready_to_review' | 'mrp_exception';
+  tab_mode?: 'ready_to_review' | 'mrp_exception' | 'exceptions_alerts' | 'action_required';
   include_line_items_only?: boolean;
 }
 

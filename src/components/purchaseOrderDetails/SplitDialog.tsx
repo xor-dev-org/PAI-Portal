@@ -19,9 +19,6 @@ type SplitDialogProps = {
 };
 
 const SplitDialog: React.FC<SplitDialogProps> = ({ open, lineId, materialCode, rows, note, onChangeRows, onNoteChange, onClose, onSubmit }) => {
-  void note;
-  void onNoteChange;
-
   const [fullscreen, setFullscreen] = useState(false);
 
   return (
@@ -53,10 +50,38 @@ const SplitDialog: React.FC<SplitDialogProps> = ({ open, lineId, materialCode, r
               <Grid item xs={12} sm={6} md={3}><TextField label="Material No" fullWidth size="small" disabled value={materialCode || ''} /></Grid>
               <Grid item xs={12} sm={6} md={2}><TextField label="Number" type="number" fullWidth size="small" value={row.quantity} onChange={(e) => onChangeRows(rows.map((r, i) => i === idx ? { ...r, quantity: e.target.value } : r))} /></Grid>
               <Grid item xs={12} sm={6} md={3}><TextField label="Delivery Date" type="date" InputLabelProps={{ shrink: true }} fullWidth size="small" value={row.delivery_date} onChange={(e) => onChangeRows(rows.map((r, i) => i === idx ? { ...r, delivery_date: e.target.value } : r))} /></Grid>
-              <Grid item xs={12} sm={6} md={2}><IconButton onClick={() => onChangeRows(rows.filter((_, i) => i !== idx))}><Delete /></IconButton></Grid>
-              <Grid item xs={12} sm={6} md={10}><Button size="medium" fullWidth={false} variant="outlined" onClick={() => onChangeRows([...rows, { quantity: '', delivery_date: '' }])}>+ DELIVERY</Button></Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <IconButton
+                  onClick={() => {
+                    if (rows.length <= 1) {
+                      return;
+                    }
+                    onChangeRows(rows.filter((_, i) => i !== idx));
+                  }}
+                  disabled={rows.length <= 1}
+                >
+                  <Delete />
+                </IconButton>
+              </Grid>
             </Grid>
           ))}
+          <Box>
+            <Button
+              size="medium"
+              variant="outlined"
+              onClick={() => onChangeRows([...rows, { quantity: '', delivery_date: '' }])}
+            >
+              + DELIVERY
+            </Button>
+          </Box>
+          <TextField
+            label="Add Info"
+            fullWidth
+            multiline
+            rows={3}
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+          />
         </Stack>
           
       </DialogContent>

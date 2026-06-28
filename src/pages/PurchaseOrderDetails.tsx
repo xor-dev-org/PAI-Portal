@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Upload } from '@mui/icons-material';
 import { GridColDef } from '@mui/x-data-grid';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import { LineItem, PurchaseOrder } from '@/models';
@@ -39,6 +39,7 @@ import { formatLineId, getTabs, isSupplierRole } from './purchaseOrderDetails/ut
 
 const PurchaseOrderDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role || '';
@@ -52,14 +53,18 @@ const PurchaseOrderDetails: React.FC = () => {
 
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
   const [documentsRows, setDocumentsRows] = useState<DocsRow[]>([]);
+  const [documentTags, setDocumentTags] = useState<string[]>([]);
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [selectedLine, setSelectedLine] = useState<LineItem | null>(null);
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocsRow | null>(null);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [pinnedLineIds, setPinnedLineIds] = useState<string[]>([]);
+  const [isPOLevelAction, setIsPOLevelAction] = useState(false);
+  const [pinnedLineKeys, setPinnedLineKeys] = useState<string[]>([]);
   const [linePinFilter, setLinePinFilter] = useState<'all' | 'pinned'>('all');
+  const [pinnedDocumentKeys, setPinnedDocumentKeys] = useState<string[]>([]);
+  const [documentPinFilter, setDocumentPinFilter] = useState<'all' | 'pinned'>('all');
   const [lineSearchQuery] = useState('');
 
   const [activeDialog, setActiveDialog] = useState<DialogType>('NONE');
@@ -79,6 +84,23 @@ const PurchaseOrderDetails: React.FC = () => {
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadComments, setUploadComments] = useState('');
+  const [selectedDocumentTag, setSelectedDocumentTag] = useState('LINE_ITEM');
+
+  const moduleContext = useMemo(() => {
+    const queryModule = new URLSearchParams(location.search).get('module');
+    if (queryModule === 'supplier-collaboration' || queryModule === 'cockpit') {
+      return queryModule;
+    }
+    return 'default';
+  }, [location.search]);
+
+  const isSupplierCollaborationContext = moduleContext === 'supplier-collaboration';
+  const isCockpitContext = moduleContext === 'cockpit';
+  const poListingRoute = isSupplierCollaborationContext
+    ? '/supplier-collaboration'
+    : isCockpitContext
+      ? '/cockpit'
+      : '/purchase-orders';
 
   const tabs = getTabs(user?.role);
 
@@ -107,6 +129,13 @@ const PurchaseOrderDetails: React.FC = () => {
     setDocumentsRows(rows || []);
   }, [id]);
 
+  const reloadDocumentTags = useCallback(async () => {
+    const tags = await purchaseOrderService.getPODocumentTags();
+    const normalizedTags = tags.length > 0 ? tags : ['LINE_ITEM'];
+    setDocumentTags(normalizedTags);
+    setSelectedDocumentTag((prev) => (normalizedTags.includes(prev) ? prev : normalizedTags[0] || 'LINE_ITEM'));
+  }, []);
+
   useEffect(() => {
     const loadAll = async () => {
       if (!id) return;
@@ -114,10 +143,14 @@ const PurchaseOrderDetails: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        await Promise.all([reloadPo(), reloadHistory(), reloadDocuments()]);
+        await Promise.all([reloadPo(), reloadHistory(), reloadDocuments(), reloadDocumentTags()]);
         if (user?.id) {
-          const pinned = await userService.getLinePinnedRows(user.id);
-          setPinnedLineIds(pinned);
+          const [linePins, documentPins] = await Promise.all([
+            userService.getPinnedRows(user.id, 'po_details_lines'),
+            userService.getPinnedRows(user.id, 'po_details_documents'),
+          ]);
+          setPinnedLineKeys(linePins);
+          setPinnedDocumentKeys(documentPins);
         }
       } catch (err: any) {
         setError(err?.response?.data?.detail || 'Failed to load PO details');
@@ -127,7 +160,7 @@ const PurchaseOrderDetails: React.FC = () => {
     };
 
     void loadAll();
-  }, [id, reloadPo, reloadHistory, reloadDocuments, user?.id]);
+  }, [id, reloadPo, reloadHistory, reloadDocuments, reloadDocumentTags, user?.id]);
 
   useEffect(() => {
     const publishChatContext = async () => {
@@ -179,6 +212,8 @@ const PurchaseOrderDetails: React.FC = () => {
 
   const lineItems = po?.line_items || [];
   const hasSelectedSupplierLineRows = selectedLineIds.length > 0;
+  const buildLinePinKey = useCallback((lineId: string) => `${id || 'unknown'}::${lineId}`, [id]);
+  const buildDocumentPinKey = useCallback((documentId: string) => `${id || 'unknown'}::${documentId}`, [id]);
 
   useEffect(() => {
     // Keep action state in sync with current PO line set after reloads.
@@ -210,6 +245,7 @@ const PurchaseOrderDetails: React.FC = () => {
 
   const closeDialog = () => {
     setActiveDialog('NONE');
+    setIsPOLevelAction(false);
     setDialogNote('');
     setDialogDate('');
     setSplitRows([{ quantity: '', delivery_date: '' }]);
@@ -222,17 +258,15 @@ const PurchaseOrderDetails: React.FC = () => {
     setDocumentActionMode('UPLOAD');
     setUploadFile(null);
     setUploadComments('');
+    setSelectedDocumentTag('LINE_ITEM');
   };
 
   const openMenu = (event: React.MouseEvent<HTMLElement>, line: LineItem) => {
     const selectedId = formatLineId(line);
-    const matchedLine = lineItems.find((item) => formatLineId(item) === selectedId);
-    if (!matchedLine) {
-      setError('Selected line item is not available in the current PO data. Please refresh and try again.');
-      return;
-    }
+    const matchedLine = lineItems.find((item) => formatLineId(item) === selectedId) || line;
 
     setError(null);
+    setIsPOLevelAction(false);
     setSelectedLine(matchedLine);
     setMenuAnchorEl(event.currentTarget);
   };
@@ -243,17 +277,19 @@ const PurchaseOrderDetails: React.FC = () => {
       return lineItems.find((line) => formatLineId(line) === selectedLineId) || null;
     }
     if (!selectedLine) {
-      return null;
+      return lineItems[0] || null;
     }
     const selectedId = formatLineId(selectedLine);
-    return lineItems.find((line) => formatLineId(line) === selectedId) || null;
+    return lineItems.find((line) => formatLineId(line) === selectedId) || lineItems[0] || null;
   };
 
   const closeMenu = () => {
     setMenuAnchorEl(null);
   };
 
-  const openDialogForAction = (action: string) => {
+  const openDialogForAction = (action: string, options?: { poLevel?: boolean }) => {
+    const poLevel = Boolean(options?.poLevel);
+    setIsPOLevelAction(poLevel);
     const normalized = action.toUpperCase();
     const primaryLine = resolvePrimaryLine();
     if (normalized === 'PROPOSE_CHANGE') {
@@ -269,6 +305,7 @@ const PurchaseOrderDetails: React.FC = () => {
       setConcessionDescription('');
       setDialogNote('');
       setConcessionDocumentId(documentsRows[0]?.id || '');
+      setSelectedDocumentTag(documentTags.includes('CONCESSION') ? 'CONCESSION' : (documentTags[0] || 'LINE_ITEM'));
       return setActiveDialog('RAISE_CONCESSION');
     }
     if (normalized === 'HOLD' || normalized === 'ACCEPT' || normalized === 'ACKNOWLEDGE') {
@@ -309,9 +346,12 @@ const PurchaseOrderDetails: React.FC = () => {
     setActiveDialog(action);
   };
 
-  const openDocumentReplaceDialog = (document?: DocsRow) => {
+  const openDocumentReplaceDialog = (document?: DocsRow, options?: { poLevel?: boolean }) => {
+    setIsPOLevelAction(Boolean(options?.poLevel));
+    setSelectedLine(resolvePrimaryLine());
     setSelectedDocument(document || null);
     setDocumentActionMode(document ? 'REPLACE' : 'UPLOAD');
+    setSelectedDocumentTag(document?.document_tag_to || 'LINE_ITEM');
     setDialogNote('');
     setUploadFile(null);
     setUploadComments('');
@@ -320,19 +360,24 @@ const PurchaseOrderDetails: React.FC = () => {
 
   const executeAction = async (action: string, payload?: Record<string, unknown>, lineIds?: string[]) => {
     const resolvedLineIds = resolveLineIdsForAction(lineIds);
+    const poLevelAcceptLineIds =
+      isPOLevelAction && action.toUpperCase() === 'ACCEPT'
+        ? lineItems.map((line) => formatLineId(line)).filter(Boolean)
+        : [];
+    const effectiveLineIds = poLevelAcceptLineIds.length > 0 ? poLevelAcceptLineIds : resolvedLineIds;
 
     if (!id) return;
 
-    if (resolvedLineIds.length === 0) {
+    if (effectiveLineIds.length === 0) {
       setError('Please select a valid line item before continuing.');
       return;
     }
 
-    const line_item_id = resolvedLineIds[0];
+    const line_item_id = effectiveLineIds[0];
     const req = {
       action,
       line_item_id,
-      line_item_ids: resolvedLineIds,
+      line_item_ids: effectiveLineIds,
       ...(payload || {}),
     };
 
@@ -390,6 +435,7 @@ const PurchaseOrderDetails: React.FC = () => {
           const uploaded = await purchaseOrderService.uploadPODocument(id, {
             line_item_id: primaryLineId,
             file: uploadFile,
+            document_tag_to: selectedDocumentTag || 'CONCESSION',
             comments: concessionDescription || 'Concession request attachment',
           });
           const uploadedDocumentId = (uploaded as { id?: string }).id;
@@ -417,7 +463,13 @@ const PurchaseOrderDetails: React.FC = () => {
         await submitDocumentReview(action);
         return;
       }
-      const selectedIds = selectedLineIds.length > 0 ? selectedLineIds : selectedLine ? [formatLineId(selectedLine)] : [];
+      const selectedIds = isPOLevelAction && action === 'ACCEPT'
+        ? lineItems.map((line) => formatLineId(line)).filter(Boolean)
+        : selectedLineIds.length > 0
+          ? selectedLineIds
+          : selectedLine
+            ? [formatLineId(selectedLine)]
+            : [];
       await executeAction(action, { notes: dialogNote, document_id: concessionDocumentId || undefined }, selectedIds);
       closeDialog();
     } catch (err: any) {
@@ -448,6 +500,7 @@ const PurchaseOrderDetails: React.FC = () => {
       if (documentActionMode === 'REPLACE' && selectedDocument) {
         await purchaseOrderService.replacePODocument(id, selectedDocument.id, {
           file: uploadFile,
+          document_tag_to: selectedDocumentTag || 'LINE_ITEM',
           comments: uploadComments,
         });
       } else {
@@ -461,6 +514,7 @@ const PurchaseOrderDetails: React.FC = () => {
             purchaseOrderService.uploadPODocument(id, {
               line_item_id: lineId,
               file: uploadFile,
+              document_tag_to: selectedDocumentTag || 'LINE_ITEM',
               comments: uploadComments,
             })
           )
@@ -492,18 +546,52 @@ const PurchaseOrderDetails: React.FC = () => {
   };
 
   const toggleLinePin = useCallback((lineId: string) => {
-    setPinnedLineIds((prev) => {
-      const next = prev.includes(lineId)
-        ? prev.filter((id) => id !== lineId)
-        : [...prev, lineId];
+    setPinnedLineKeys((prev) => {
+      const pinKey = buildLinePinKey(lineId);
+      const next = prev.includes(pinKey)
+        ? prev.filter((item) => item !== pinKey)
+        : [...prev, pinKey];
 
       if (user?.id) {
-        void userService.updateLinePinnedRows(user.id, next);
+        void userService.updatePinnedRows(user.id, next, 'po_details_lines');
       }
 
       return next;
     });
-  }, [user?.id]);
+  }, [buildLinePinKey, user?.id]);
+
+  const toggleDocumentPin = useCallback((documentId: string) => {
+    setPinnedDocumentKeys((prev) => {
+      const pinKey = buildDocumentPinKey(documentId);
+      const next = prev.includes(pinKey)
+        ? prev.filter((item) => item !== pinKey)
+        : [...prev, pinKey];
+
+      if (user?.id) {
+        void userService.updatePinnedRows(user.id, next, 'po_details_documents');
+      }
+
+      return next;
+    });
+  }, [buildDocumentPinKey, user?.id]);
+
+  const pinnedLineIds = useMemo(
+    () =>
+      pinnedLineKeys
+        .filter((pinKey) => pinKey.startsWith(`${id || 'unknown'}::`))
+        .map((pinKey) => pinKey.split('::')[1] || '')
+        .filter(Boolean),
+    [id, pinnedLineKeys]
+  );
+
+  const pinnedDocumentIds = useMemo(
+    () =>
+      pinnedDocumentKeys
+        .filter((pinKey) => pinKey.startsWith(`${id || 'unknown'}::`))
+        .map((pinKey) => pinKey.split('::')[1] || '')
+        .filter(Boolean),
+    [id, pinnedDocumentKeys]
+  );
 
   const displayedLineItems = useMemo(
     () =>
@@ -517,12 +605,34 @@ const PurchaseOrderDetails: React.FC = () => {
     [lineItems, linePinFilter, pinnedLineIds, lineSearchQuery]
   );
 
-  const lineColumns: GridColDef[] = useMemo(
-    () => buildLineColumns({ pinnedLineIds, toggleLinePin, openMenu }),
-    [pinnedLineIds, toggleLinePin]
+  const displayedDocumentsRows = useMemo(
+    () =>
+      documentPinFilter === 'pinned'
+        ? documentsRows.filter((document) => pinnedDocumentIds.includes(String(document.id || '')))
+        : documentsRows,
+    [documentPinFilter, documentsRows, pinnedDocumentIds]
   );
 
-  const supplierLineColumns: GridColDef[] = useMemo(() => buildSupplierLineColumns(lineColumns), [lineColumns]);
+  const lineColumns: GridColDef[] = useMemo(
+    () =>
+      buildLineColumns({
+        pinnedLineIds,
+        toggleLinePin,
+        openMenu,
+        highlightNeedByDate: supplier || isSupplierCollaborationContext,
+        onSupplierConfirmationClick: (line) =>
+          navigate(`/purchase-orders/${id}/line-items/${formatLineId(line)}?module=${moduleContext}`),
+        onConcessionClick: isCockpitContext
+          ? (line) => navigate(`/purchase-orders/${id}/line-items/${formatLineId(line)}?module=${moduleContext}`)
+          : undefined,
+      }),
+    [pinnedLineIds, toggleLinePin, supplier, isSupplierCollaborationContext, isCockpitContext, navigate, id, moduleContext]
+  );
+
+  const supplierLineColumns: GridColDef[] = useMemo(
+    () => buildSupplierLineColumns(lineColumns, isCockpitContext),
+    [lineColumns, isCockpitContext]
+  );
 
   if (loading) {
     return (
@@ -547,7 +657,7 @@ const PurchaseOrderDetails: React.FC = () => {
     <Box sx={{ p: 2, minHeight: '100%', backgroundColor: '#ffffff' }}>
       <Stack spacing={2}>
         <Breadcrumbs>
-          <Typography sx={{ cursor: 'pointer' }} color="primary" onClick={() => navigate('/purchase-orders')}>
+          <Typography sx={{ cursor: 'pointer' }} color="primary" onClick={() => navigate(poListingRoute)}>
             PO Listing
           </Typography>
           <Typography color="text.secondary">PO Details</Typography>
@@ -555,20 +665,32 @@ const PurchaseOrderDetails: React.FC = () => {
 
         <HeaderCard
           po={po}
-          actions={supplier ? (
-            <>
-              {activeTab === 1 ? (
+          actions={
+            activeTab === 1 ? (
+              supplier ? (
                 <>
-                  <Button size="small" variant="outlined" disabled={!hasSelectedSupplierLineRows} onClick={() => openDialogForAction('RAISE_CONCESSION')}>RAISE CONSESSION</Button>
-                  <Button size="small" variant="outlined" disabled={!hasSelectedSupplierLineRows} onClick={() => openDocumentReplaceDialog()}>UPLOAD DOCUMENT</Button>
-                  <Button size="small" sx={{bgcolor: 'primary.main', color: '#fff'}} variant="outlined" disabled={!hasSelectedSupplierLineRows} onClick={() => openDialogForAction('ACKNOWLEDGE')}>ACKNOWLEDGE</Button>
+                  <Button size="small" variant="outlined" onClick={() => openDialogForAction('RAISE_CONCESSION', { poLevel: true })}>RAISE CONCESSION</Button>
+                  <Button size="small" variant="outlined" onClick={() => openDocumentReplaceDialog(undefined, { poLevel: true })}>UPLOAD DOCUMENT</Button>
+                  <Button size="small" sx={{bgcolor: 'primary.main', color: '#fff'}} variant="outlined" onClick={() => openDialogForAction('ACKNOWLEDGE', { poLevel: true })}>ACKNOWLEDGE</Button>
                 </>
-              ) : null}
+              ) : (
+                <Button
+                  size="small"
+                  sx={{ bgcolor: 'primary.main', color: '#fff' }}
+                  variant="outlined"
+                  onClick={() => openDialogForAction('ACCEPT', { poLevel: true })}
+                >
+                  ACCEPT
+                </Button>
+              )
+            ) : supplier ? (
+            <>
               {activeTab === 3 ? (
                 <Button size="small" variant="outlined" startIcon={<Upload />} disabled={!hasSelectedSupplierLineRows} onClick={() => openDocumentReplaceDialog()}>UPLOAD DOCUMENT</Button>
               ) : null}
             </>
-          ) : null}
+            ) : null
+          }
         />
 
         {error ? <Alert severity="error" onClose={() => setError(null)}>{error}</Alert> : null}
@@ -600,9 +722,13 @@ const PurchaseOrderDetails: React.FC = () => {
                 pinnedCount={pinnedLineIds.length}
                 linePinFilter={linePinFilter}
                 onTogglePinFilter={() => setLinePinFilter((prev) => (prev === 'pinned' ? 'all' : 'pinned'))}
-                checkboxSelection={supplier}
+                checkboxSelection
                 rowSelectionModel={selectedLineIds}
                 onRowSelectionModelChange={setSelectedLineIds}
+                onRowClick={(row) => {
+                  setSelectedLine(row);
+                  setSelectedLineIds([formatLineId(row)]);
+                }}
               />
             ) : null}
 
@@ -610,14 +736,19 @@ const PurchaseOrderDetails: React.FC = () => {
 
             {activeTab === 3 ? (
               <DocumentsTab
-                documentsRows={documentsRows}
+                documentsRows={displayedDocumentsRows}
                 role={role}
                 onReviewDocument={openDocumentReviewDialog}
                 onDownloadDocument={(doc) => void downloadDocument(doc.id, doc.file_name || doc.file_path)}
                 onReplaceDocument={openDocumentReplaceDialog}
-                checkboxSelection={supplier}
+                checkboxSelection
                 rowSelectionModel={selectedDocumentIds}
                 onRowSelectionModelChange={setSelectedDocumentIds}
+                pinnedCount={pinnedDocumentIds.length}
+                pinFilter={documentPinFilter}
+                onTogglePinFilter={() => setDocumentPinFilter((prev) => (prev === 'pinned' ? 'all' : 'pinned'))}
+                pinnedDocumentIds={pinnedDocumentIds}
+                onToggleDocumentPin={toggleDocumentPin}
               />
             ) : null}
           </Box>
@@ -660,6 +791,7 @@ const PurchaseOrderDetails: React.FC = () => {
       <SimpleInfoDialog
         open={activeDialog === 'HOLD'}
         title="Hold"
+        submitLabel="Submit Hold Request"
         lineId={formatLineId(selectedLine || undefined)}
         materialCode={selectedLine?.material_code}
         quantity={selectedLine?.quantity}
@@ -673,6 +805,8 @@ const PurchaseOrderDetails: React.FC = () => {
       <SimpleInfoDialog
         open={activeDialog === 'ACCEPT'}
         title="Accept"
+        submitLabel="Submit Acceptance"
+        poNumber={isPOLevelAction ? po?.po_number : undefined}
         lineId={formatLineId(selectedLine || undefined)}
         materialCode={selectedLine?.material_code}
         quantity={selectedLine?.quantity}
@@ -686,7 +820,9 @@ const PurchaseOrderDetails: React.FC = () => {
       <SimpleInfoDialog
         open={activeDialog === 'ACKNOWLEDGE'}
         title="Acknowledge"
-        lineId={formatLineId(selectedLine || undefined)}
+        submitLabel="Submit Acknowledgement"
+        poNumber={isPOLevelAction ? po?.po_number : undefined}
+        lineId={isPOLevelAction ? '' : formatLineId(selectedLine || undefined)}
         materialCode={selectedLine?.material_code}
         quantity={selectedLine?.quantity}
         deliveryDate={selectedLine?.required_in_house_date}
@@ -711,6 +847,7 @@ const PurchaseOrderDetails: React.FC = () => {
       <SimpleInfoDialog
         open={activeDialog === 'REJECT'}
         title="Rejected"
+        submitLabel="Submit Rejection"
         lineId={formatLineId(selectedLine || undefined)}
         materialCode={selectedLine?.material_code}
         quantity={selectedLine?.quantity}
@@ -724,6 +861,7 @@ const PurchaseOrderDetails: React.FC = () => {
       <SimpleInfoDialog
         open={activeDialog === 'NEED_MORE_INFORMATION'}
         title="More Information Needed"
+        submitLabel="Submit Info Request"
         lineId={formatLineId(selectedLine || undefined)}
         materialCode={selectedLine?.material_code}
         quantity={selectedLine?.quantity}
@@ -752,16 +890,19 @@ const PurchaseOrderDetails: React.FC = () => {
 
       <RaiseConcessionDialog
         open={activeDialog === 'RAISE_CONCESSION'}
-        lineId={formatLineId(selectedLine || undefined)}
+        poNumber={isPOLevelAction ? po?.po_number : undefined}
+        lineId={isPOLevelAction ? '' : formatLineId(selectedLine || undefined)}
         materialCode={selectedLine?.material_code}
         description={selectedLine?.description}
         documentsRows={documentsRows}
+        documentTags={documentTags}
+        selectedDocumentTag={selectedDocumentTag}
         selectedDocumentId={concessionDocumentId}
         uploadFile={uploadFile}
         reason={dialogNote}
         concessionDescription={concessionDescription}
         onReasonChange={setDialogNote}
-        onDocumentIdChange={setConcessionDocumentId}
+        onDocumentIdChange={setSelectedDocumentTag}
         onUploadFileChange={setUploadFile}
         onConcessionDescriptionChange={setConcessionDescription}
         onClose={closeDialog}
@@ -770,11 +911,17 @@ const PurchaseOrderDetails: React.FC = () => {
 
       <UploadDocumentDialog
         open={activeDialog === 'UPLOAD_DOCUMENT'}
-        lineId={selectedLineIds.length > 1 ? `${selectedLineIds.length} selected` : formatLineId(selectedLine || undefined)}
+        mode={documentActionMode}
+        poNumber={isPOLevelAction ? po?.po_number : undefined}
+        lineId={isPOLevelAction ? '' : selectedLineIds.length > 1 ? `${selectedLineIds.length} selected` : formatLineId(selectedLine || undefined)}
         uploadFile={uploadFile}
         uploadComments={uploadComments}
+        documentTags={documentTags}
+        selectedDocumentTag={selectedDocumentTag}
+        selectedDocumentName={selectedDocument?.file_name || selectedDocument?.file_path}
         documentsRows={documentsRows}
         onUploadFileChange={setUploadFile}
+        onSelectedDocumentTagChange={setSelectedDocumentTag}
         onUploadCommentsChange={setUploadComments}
         onDownloadDocument={(doc) => void downloadDocument(doc.id, doc.file_name || doc.file_path)}
         onClose={closeDialog}

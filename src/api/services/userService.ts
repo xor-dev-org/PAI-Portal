@@ -1,7 +1,7 @@
 import apiClient from '../axios';
 import { User } from '@/models';
 
-type PinType = 'po' | 'po_to_review' | 'mrp_exception';
+type PinType = 'po' | 'po_to_review' | 'mrp_exception' | 'po_details_lines' | 'po_details_documents';
 
 export const userService = {
   // Get users by role

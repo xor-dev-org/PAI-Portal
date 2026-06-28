@@ -47,6 +47,7 @@ interface POFiltersProps {
   selectedTab: number;
   onTabChange: (tab: number) => void;
   userRole?: string;
+  tabs?: Array<{ label: string; value: number }>;
 }
 
 const POFilters: React.FC<POFiltersProps> = ({
@@ -68,6 +69,7 @@ const POFilters: React.FC<POFiltersProps> = ({
   selectedTab,
   onTabChange,
   userRole,
+  tabs,
 }) => {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -173,14 +175,20 @@ const POFilters: React.FC<POFiltersProps> = ({
             },
           }}
         >
-          <Tab label="OPEN PO" value={0} />
+          {tabs && tabs.length > 0 ? (
+            tabs.map((tab) => <Tab key={`${tab.label}-${tab.value}`} label={tab.label} value={tab.value} />)
+          ) : (
+            <>
+              <Tab label="ALL OPEN PO" value={0} />
 
-          {/* Actual old OPEN PO tab kept in code but hidden for now */}
-          <Tab label="OPEN PO" value={1} sx={{ display: 'none' }} />
+              {/* Actual old OPEN PO tab kept in code but hidden for now */}
+              <Tab label="OPEN PO" value={1} sx={{ display: 'none' }} />
 
-          {userRole !== 'SUPPLIER' && <Tab label="PO TO REVIEW" value={2} />}
+              {userRole !== 'SUPPLIER' && <Tab label="PO TO REVIEW" value={2} />}
 
-          {userRole !== 'SUPPLIER' && <Tab label="MRP EXCEPTION" value={3} />}
+              {userRole !== 'SUPPLIER' && <Tab label="MRP EXCEPTION" value={3} />}
+            </>
+          )}
         </Tabs>
 
         {/* RIGHT SIDE - ALL FILTERS */}

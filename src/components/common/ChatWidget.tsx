@@ -205,7 +205,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     const updatedConversations = [AI_CONVERSATION, ...initialConversations];
 
     if (updatedConversations.length > 0) {
-      const firstId = updatedConversations[0].id;
+      const firstId = updatedConversations[0]!.id;
 
       setSelectedId(firstId);
       setThreadClient(null);
@@ -223,13 +223,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
   }, [initialConversations, activeChatContext]);
 
   const selectedConversation = useMemo(
-    () => conversations.find((item) => item.id === selectedId) ?? conversations[0],
+    () => (conversations.find((item) => item.id === selectedId) || conversations[0])!,
     [conversations, selectedId]
-  );
+  ) as Conversation;
 
     useEffect(() => {
 
-      if (!threadClient || !open || selectedConversation?.id === -999) {
+      if (!threadClient || !open || selectedConversation.id === -999) {
           return;
       }
 
@@ -408,18 +408,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
 
     if (!trimmed && !selectedFile || !selectedConversation) return;
 
-    let fileUrl = undefined;
-    let fileType = undefined;
-
-    if (selectedFile) {
-      // Generate a temporary local browser link for previewing files
-      fileUrl = URL.createObjectURL(selectedFile);
-      fileType = selectedFile.type.startsWith('image/') ? 'image' : 'document';
-    }
-
-    const messageText = trimmed || (fileType === 'image' ? 'Sent an image' : `📄 Attached: ${selectedFile?.name}`);
-
-
     const question = trimmed;
 
     setDraft('');
@@ -510,10 +498,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     }> = [];
 
     for await (const msg of thread.listMessages()) {
+      const sender = isCurrentUserMessage(msg, userId, currentUser.name) ? 'me' : 'other';
       const historyItem = {
         id: String(msg.id),
         text: msg.content?.message || '',
-        sender: isCurrentUserMessage(msg, userId, currentUser.name) ? 'me' : 'other',
+        sender: sender as 'me' | 'other',
         time: msg.createdOn ? formatTime(new Date(msg.createdOn)) : '',
       };
       const text = msg.content?.message?.trim();

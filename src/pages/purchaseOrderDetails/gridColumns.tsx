@@ -11,6 +11,9 @@ type LineColumnOptions = {
   pinnedLineIds: string[];
   toggleLinePin: (lineId: string) => void;
   openMenu: (event: React.MouseEvent<HTMLElement>, line: LineItem) => void;
+  highlightNeedByDate?: boolean;
+  onConcessionClick?: (line: LineItem) => void;
+  onSupplierConfirmationClick?: (line: LineItem) => void;
 };
 
 type DocumentColumnOptions = {
@@ -20,7 +23,59 @@ type DocumentColumnOptions = {
   onReplaceDocument: (document: DocsRow) => void;
 };
 
-export const buildLineColumns = ({ pinnedLineIds, toggleLinePin, openMenu }: LineColumnOptions): GridColDef[] => {
+export const buildLineColumns = ({
+  pinnedLineIds,
+  toggleLinePin,
+  openMenu,
+  highlightNeedByDate = false,
+  onConcessionClick,
+  onSupplierConfirmationClick,
+}: LineColumnOptions): GridColDef[] => {
+  const renderNeedByCell = (params: GridRenderCellParams<LineItem>) => {
+    const dateValue = String(params.value || '');
+    if (!dateValue || !highlightNeedByDate) {
+      return dateValue || '-';
+    }
+
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) {
+      return dateValue;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const threshold = new Date(today);
+    threshold.setDate(today.getDate() + 30);
+    parsed.setHours(0, 0, 0, 0);
+
+    let backgroundColor: string | null = null;
+    if (parsed < today) {
+      backgroundColor = '#D32F2F';
+    } else if (parsed <= threshold) {
+      backgroundColor = '#ED6C02';
+    }
+
+    if (!backgroundColor) {
+      return dateValue;
+    }
+
+    return (
+      <Typography
+        component="span"
+        sx={{
+          px: 0.75,
+          py: 0.25,
+          borderRadius: 0,
+          color: '#FFFFFF',
+          fontWeight: 600,
+          backgroundColor,
+        }}
+      >
+        {dateValue}
+      </Typography>
+    );
+  };
+
   return [
     {
       field: 'pin',
@@ -74,7 +129,7 @@ export const buildLineColumns = ({ pinnedLineIds, toggleLinePin, openMenu }: Lin
     },
     { field: 'description', headerName: 'Short Description', flex: 1, width: 200 },
     { field: 'quantity', headerName: 'Qty', width: 64, type: 'number', align: 'center', headerAlign: 'center' },
-    { field: 'updated_quantity', headerName: 'Supplied Qty', width: 84, type: 'number', align: 'center', headerAlign: 'center' },
+    { field: 'updated_quantity', headerName: 'Updated Qty', width: 96, type: 'number', align: 'center', headerAlign: 'center' },
     { field: 'unit', headerName: 'UOM', width: 58, align: 'center', headerAlign: 'center' },
     { field: 'unit_price', headerName: 'Unit Price', width: 86, type: 'number', align: 'right', headerAlign: 'right' },
     {
@@ -110,25 +165,74 @@ export const buildLineColumns = ({ pinnedLineIds, toggleLinePin, openMenu }: Lin
         return <Typography variant="body2">{Number.isFinite(diff) ? diff.toFixed(2) : '-'}</Typography>;
       },
     },
-    { field: 'required_in_house_date', headerName: 'Need By Date', width: 100 },
+    {
+      field: 'required_in_house_date',
+      headerName: 'Need By Date',
+      width: 100,
+      renderCell: renderNeedByCell,
+    },
     { field: 'updated_delivery_date', headerName: 'Revised Date', width: 100 },
     {
-      field: 'supplier_confirmation',
-      headerName: 'Supplier Confirmation',
-      width: 60,
-      renderCell: () => (
-        <Typography variant="body2" color="primary.main" sx={{ textDecoration: 'underline', cursor: 'pointer' }}>
-          View
-        </Typography>
-      ),
+      field: 'supplier_confirmation_date',
+      headerName: 'Supplier Confirmation Date',
+      width: 170,
+      renderCell: (params: GridRenderCellParams<LineItem>) => {
+        if (params.value) {
+          return <Typography variant="body2">{String(params.value)}</Typography>;
+        }
+
+        return (
+          <Typography
+            component="span"
+            variant="body2"
+            color="primary.main"
+            sx={{ textDecoration: 'underline', cursor: onSupplierConfirmationClick ? 'pointer' : 'default' }}
+            onClick={(event) => {
+              if (!onSupplierConfirmationClick) {
+                return;
+              }
+              event.stopPropagation();
+              onSupplierConfirmationClick(params.row);
+            }}
+          >
+            View
+          </Typography>
+        );
+      },
     },
     {
       field: 'concession',
       headerName: 'Concession',
       width: 90,
       renderCell: (params: GridRenderCellParams<LineItem>) => (
-        <Typography variant="body2">{(params.row as any).concession || '-'}</Typography>
+        <Typography
+          variant="body2"
+          color={onConcessionClick && (params.row as any).concession ? 'primary.main' : 'text.primary'}
+          sx={{
+            cursor: onConcessionClick && (params.row as any).concession ? 'pointer' : 'default',
+            textDecoration: onConcessionClick && (params.row as any).concession ? 'underline' : 'none',
+          }}
+          onClick={(event) => {
+            if (!onConcessionClick || !(params.row as any).concession) {
+              return;
+            }
+            event.stopPropagation();
+            onConcessionClick(params.row);
+          }}
+        >
+          {(params.row as any).concession || '-'}
+        </Typography>
       ),
+    },
+    {
+      field: 'documents',
+      headerName: 'Documents',
+      width: 90,
+      renderCell: (params: GridRenderCellParams<LineItem>) => {
+        const docs = (params.row as any).documents;
+        const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
+        return <Typography variant="body2">{hasDocs ? '📎' : '--'}</Typography>;
+      },
     },
     {
       field: 'actions',
@@ -149,21 +253,33 @@ export const buildLineColumns = ({ pinnedLineIds, toggleLinePin, openMenu }: Lin
   ];
 };
 
-export const buildSupplierLineColumns = (lineColumns: GridColDef[]) => {
+export const buildSupplierLineColumns = (lineColumns: GridColDef[], includeConcession = false) => {
+  const fields = [
+    'pin',
+    'po_line',
+    'material_code',
+    'line_status',
+    'description',
+    'quantity',
+    'updated_quantity',
+    'unit_price',
+    'updated_unit_price',
+    'net_value',
+    'updated_net_value',
+    'required_in_house_date',
+    'updated_delivery_date',
+    'supplier_confirmation_date',
+    'concession',
+    'documents',
+    'actions',
+  ];
+
+  if (includeConcession) {
+    fields.push('updated_total');
+  }
+
   return lineColumns.filter((col) =>
-    [
-      'pin',
-      'po_line',
-      'material_code',
-      'line_status',
-      'description',
-      'quantity',
-      'unit',
-      'unit_price',
-      'net_value',
-      'required_in_house_date',
-      'actions',
-    ].includes(col.field)
+    fields.includes(col.field)
   );
 };
 
@@ -177,7 +293,13 @@ export const buildDocumentColumns = ({ role, onReviewDocument, onDownloadDocumen
       minWidth: 220,
       flex: 1,
       renderCell: (params: GridRenderCellParams<DocsRow>) => (
-        <Typography variant="body2" color="primary.main" noWrap>
+        <Typography
+          variant="body2"
+          color="primary.main"
+          noWrap
+          sx={{ textDecoration: 'underline', cursor: 'pointer' }}
+          onClick={() => onDownloadDocument(params.row)}
+        >
           {params.row.file_name || params.row.file_path || '-'}
         </Typography>
       ),

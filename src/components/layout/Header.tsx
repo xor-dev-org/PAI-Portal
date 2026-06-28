@@ -92,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           aria-label="open drawer"
           edge="start"
           onClick={onMenuClick}
-          sx={{ mr: 2, display: { sm: 'none' } }}
+          sx={{ mr: 2 }}
         >
           <MenuIcon />
         </IconButton>
@@ -105,13 +105,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             gap: 1,
           }}
         >
-          <MenuIcon
-            sx={{
-              color: '#FFFFFF',
-              fontSize: 26,
-            }}
-          />
-
           <Typography
             noWrap
             component="div"

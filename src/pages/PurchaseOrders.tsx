@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -20,12 +20,15 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
+  Menu,
+  MenuItem as ActionMenuItem,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import {
   PurchaseOrder,
@@ -42,6 +45,15 @@ import { logger } from '@/services/logger';
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 import { userService } from '@/api/services/userService';
+import {
+  MoveDateDialog,
+  ProposeChangeDialog,
+  RaiseConcessionDialog,
+  SimpleInfoDialog,
+  SplitDialog,
+  UploadDocumentDialog,
+} from '@/components/purchaseOrderDetails';
+import { DialogType } from './purchaseOrderDetails/types';
 
 type LineItemTabRow = {
   id: string;
@@ -49,14 +61,70 @@ type LineItemTabRow = {
   [key: string]: unknown;
 };
 
-const PurchaseOrders: React.FC = () => {
+type PurchaseOrdersModuleVariant = 'default' | 'supplier-collaboration' | 'cockpit';
+
+interface PurchaseOrdersProps {
+  moduleVariant?: PurchaseOrdersModuleVariant;
+}
+
+const MODULE_TABS: Record<PurchaseOrdersModuleVariant, Array<{ label: string; value: number }>> = {
+  default: [
+    { label: 'MRP EXCEPTION', value: 3 },
+    { label: 'PO TO REVIEW', value: 2 },
+    { label: 'ALL OPEN PO', value: 0 },
+  ],
+  'supplier-collaboration': [
+    { label: 'EXCEPTIONS & ALERTS', value: 3 },
+    { label: 'ACTION REQUIRED', value: 2 },
+    { label: 'ALL OPEN PO', value: 0 },
+  ],
+  cockpit: [
+    { label: 'MRP EXCEPTION', value: 3 },
+    { label: 'PO TO REVIEW', value: 2 },
+    { label: 'ALL OPEN PO', value: 0 },
+  ],
+};
+
+const MODULE_TITLE: Record<PurchaseOrdersModuleVariant, string> = {
+  default: 'Purchase Order Listing',
+  'supplier-collaboration': 'Supplier Collaboration',
+  cockpit: 'Procurement Cockpit',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  MOVE_IN: 'Move in',
+  MOVE_OUT: 'Move out',
+  SPLIT: 'Split',
+  HOLD: 'Hold',
+  REJECT: 'Reject',
+  ACCEPT: 'Accept',
+  ACKNOWLEDGE: 'Acknowledge',
+  NEED_MORE_INFORMATION: 'Need More Information',
+  PROPOSE_CHANGE: 'Propose change',
+  RAISE_CONCESSION: 'Raise Concession',
+  UPLOAD_DOCUMENT: 'Upload Document',
+};
+
+const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'default' }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const theme = useTheme();
+  const isDefaultSupplierView = moduleVariant === 'default' && user?.role === 'SUPPLIER';
+  const isSupplierCollaborationMode = moduleVariant === 'supplier-collaboration' || isDefaultSupplierView;
+  const moduleTabs = useMemo(() => {
+    if (isDefaultSupplierView) {
+      return MODULE_TABS['supplier-collaboration'];
+    }
+
+    return MODULE_TABS[moduleVariant];
+  }, [moduleVariant, isDefaultSupplierView]);
+  const defaultTab = moduleTabs[0]?.value ?? 0;
+  const isSupplierCollaboration = isSupplierCollaborationMode;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(defaultTab);
+  const shouldHighlightNeedByDate = isSupplierCollaboration && selectedTab === 3;
   
   const isPOToReviewTab = selectedTab === 2;
   const isMRPExceptionTab = selectedTab === 3;
@@ -65,9 +133,47 @@ const PurchaseOrders: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lineItemRows, setLineItemRows] = useState<LineItemTabRow[]>([]);
+  const [actionAnchorEl, setActionAnchorEl] = useState<HTMLElement | null>(null);
+  const [selectedActionRow, setSelectedActionRow] = useState<LineItemTabRow | null>(null);
+  const [activeDialog, setActiveDialog] = useState<DialogType>('NONE');
+  const [dialogNote, setDialogNote] = useState('');
+  const [dialogDate, setDialogDate] = useState('');
+  const [splitRows, setSplitRows] = useState<Array<{ quantity: string; delivery_date: string }>>([
+    { quantity: '', delivery_date: '' },
+  ]);
+  const [proposeQuantity, setProposeQuantity] = useState('');
+  const [proposeUnitPrice, setProposeUnitPrice] = useState('');
+  const [proposeDeliveryDate, setProposeDeliveryDate] = useState('');
+  const [concessionDescription, setConcessionDescription] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadComments, setUploadComments] = useState('');
+  const [documentTags, setDocumentTags] = useState<string[]>(['LINE_ITEM']);
+  const [selectedDocumentTag, setSelectedDocumentTag] = useState('LINE_ITEM');
 
   const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
   const [rowCount, setRowCount] = useState(0);
+
+  useEffect(() => {
+    setSelectedTab(defaultTab);
+    setPage(0);
+  }, [defaultTab, setPage]);
+
+  useEffect(() => {
+    const loadDocumentTags = async () => {
+      try {
+        const tags = await purchaseOrderService.getPODocumentTags();
+        if (tags.length > 0) {
+          setDocumentTags(tags);
+          setSelectedDocumentTag(tags[0] || 'LINE_ITEM');
+        }
+      } catch {
+        setDocumentTags(['LINE_ITEM']);
+        setSelectedDocumentTag('LINE_ITEM');
+      }
+    };
+
+    void loadDocumentTags();
+  }, []);
 
   // Filter states
   const [searchInput, setSearchInput] = useState('');
@@ -196,6 +302,15 @@ const PurchaseOrders: React.FC = () => {
     if (!sitesLoaded) {
       return;
     }
+    if (selectedSites.length === 0) {
+      setPurchaseOrders([]);
+      setLineItemRows([]);
+      setRowCount(0);
+      setPinnedPOs([]);
+      setPinnedPOsRowCount(0);
+      setLoading(false);
+      return;
+    }
 
     const startTime = performance.now();
     const isLineTabRequest = selectedTab === 2 || selectedTab === 3;
@@ -228,9 +343,21 @@ const PurchaseOrders: React.FC = () => {
           search: searchInput,
           sort_by: sortModel.sort_by,
           sort_order: sortModel.sort_order,
-          tab_mode: selectedTab === 2 ? 'ready_to_review' : 'mrp_exception',
           include_line_items_only: true,
         };
+
+        if (!isSupplierCollaboration) {
+          lineItemFilters.tab_mode = selectedTab === 2 ? 'ready_to_review' : 'mrp_exception';
+        } else if (selectedTab === 3) {
+          lineItemFilters.tab_mode = 'exceptions_alerts' as any;
+        } else if (selectedTab === 2) {
+          lineItemFilters.tab_mode = 'action_required' as any;
+        }
+        
+        if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
+          lineItemFilters.site = selectedSites.join(',');
+        }
+
 
         if (user?.role === 'SUPPLIER') {
           lineItemFilters.supplier_id = String(user.supplier_msid ?? user.id);
@@ -238,12 +365,53 @@ const PurchaseOrders: React.FC = () => {
 
         const lineResponse = await purchaseOrderService.getPOList(lineItemFilters);
 
-        setLineItemRows(lineResponse.data as unknown as LineItemTabRow[]);
+        let moduleRows = lineResponse.data as unknown as LineItemTabRow[];
+
+        if (isSupplierCollaboration) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const in30Days = new Date(today);
+          in30Days.setDate(today.getDate() + 30);
+
+          if (selectedTab === 3) {
+            moduleRows = moduleRows.filter((row) => {
+              const needByRaw = String(row.required_in_house_date || row.delivery_date || '');
+              if (!needByRaw) {
+                return false;
+              }
+
+              const needByDate = new Date(needByRaw);
+              if (Number.isNaN(needByDate.getTime())) {
+                return false;
+              }
+
+              needByDate.setHours(0, 0, 0, 0);
+              return needByDate < today || needByDate <= in30Days;
+            });
+          }
+
+          if (selectedTab === 2) {
+            moduleRows = moduleRows.filter((row) => {
+              const ackStatus = String(row.po_line_ack_status || row.line_status || '').toUpperCase();
+              return ackStatus.includes('PENDING') || ackStatus.includes('UNACK') || ackStatus.includes('NEED');
+            });
+          }
+        }
+
+        setLineItemRows(moduleRows);
         setPurchaseOrders([]);
-        setRowCount(lineResponse.total);
+        setRowCount(moduleRows.length);
+
+        const resolvedTabName = isSupplierCollaboration
+          ? selectedTab === 3
+            ? 'exceptions_alerts'
+            : 'action_required'
+          : selectedTab === 2
+            ? 'ready_to_review'
+            : 'mrp_exception';
 
         logger.info('Line item tab data fetched', {
-          tab: selectedTab === 2 ? 'ready_to_review' : 'mrp_exception',
+          tab: resolvedTabName,
           durationMs: Math.round(performance.now() - startTime),
           rowCount: lineResponse.total,
         });
@@ -260,6 +428,11 @@ const PurchaseOrders: React.FC = () => {
         search: searchInput,
         ...advanceFilters,
       };
+      
+      if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
+        filters.site = selectedSites.join(',');
+      }
+
 
       if (user?.role === 'SUPPLIER') {
         filters.supplier_id = String(user.supplier_msid ?? user.id);
@@ -321,10 +494,277 @@ const PurchaseOrders: React.FC = () => {
   // };
 
   const handleGridRowClick = (row: any) => {
+    const moduleQuery = moduleVariant === 'default' ? '' : `?module=${moduleVariant}`;
+
+    if (isLineItemTab) {
+      const poId = row.po_id;
+      const lineId = row.line_id || row.id;
+      if (poId && lineId) {
+        navigate(`/purchase-orders/${poId}/line-items/${lineId}${moduleQuery}`);
+      }
+      return;
+    }
+
     const poId = row.po_id || row.id;
 
-    navigate(`/purchase-orders/${poId}`);
+    navigate(`/purchase-orders/${poId}${moduleQuery}`);
   };
+
+  const getCurrentTabActions = useCallback((): string[] => {
+    if (isSupplierCollaborationMode) {
+      if (selectedTab === 3) {
+        return ['PROPOSE_CHANGE', 'RAISE_CONCESSION', 'UPLOAD_DOCUMENT', 'SPLIT', 'ACKNOWLEDGE'];
+      }
+      if (selectedTab === 2) {
+        return ['ACKNOWLEDGE', 'PROPOSE_CHANGE', 'UPLOAD_DOCUMENT', 'HOLD'];
+      }
+      return ['ACKNOWLEDGE', 'PROPOSE_CHANGE', 'RAISE_CONCESSION', 'UPLOAD_DOCUMENT', 'SPLIT', 'HOLD'];
+    }
+
+    if (user?.role !== 'SUPPLIER') {
+      if (selectedTab === 3) {
+        return ['ACCEPT', 'REJECT'];
+      }
+      if (selectedTab === 2) {
+        return ['ACCEPT', 'REJECT', 'NEED_MORE_INFORMATION'];
+      }
+    }
+
+    if (moduleVariant === 'cockpit') {
+      if (selectedTab === 3) {
+        return ['MOVE_IN', 'MOVE_OUT', 'SPLIT', 'HOLD', 'NEED_MORE_INFORMATION'];
+      }
+      if (selectedTab === 2) {
+        return ['ACCEPT', 'REJECT', 'ACKNOWLEDGE', 'NEED_MORE_INFORMATION', 'HOLD'];
+      }
+      return ['MOVE_IN', 'MOVE_OUT', 'SPLIT', 'HOLD', 'REJECT', 'ACCEPT', 'ACKNOWLEDGE', 'NEED_MORE_INFORMATION'];
+    }
+
+    if (user?.role === 'SUPPLIER') {
+      return ['PROPOSE_CHANGE', 'RAISE_CONCESSION', 'UPLOAD_DOCUMENT', 'SPLIT', 'ACKNOWLEDGE'];
+    }
+
+    return ['MOVE_IN', 'MOVE_OUT', 'SPLIT', 'HOLD', 'REJECT', 'ACCEPT', 'ACKNOWLEDGE', 'NEED_MORE_INFORMATION'];
+  }, [isSupplierCollaborationMode, moduleVariant, selectedTab, user?.role]);
+
+  const openActionMenu = useCallback((event: React.MouseEvent<HTMLElement>, row: LineItemTabRow) => {
+    event.stopPropagation();
+    setSelectedActionRow(row);
+    setActionAnchorEl(event.currentTarget);
+  }, []);
+
+  const closeActionMenu = useCallback(() => {
+    setActionAnchorEl(null);
+  }, []);
+
+  const closeDialog = useCallback(() => {
+    setActiveDialog('NONE');
+    setDialogNote('');
+    setDialogDate('');
+    setSplitRows([{ quantity: '', delivery_date: '' }]);
+    setProposeQuantity('');
+    setProposeUnitPrice('');
+    setProposeDeliveryDate('');
+    setConcessionDescription('');
+    setUploadFile(null);
+    setUploadComments('');
+    setSelectedDocumentTag('LINE_ITEM');
+  }, []);
+
+  const openDialogForAction = useCallback((action: string) => {
+    closeActionMenu();
+    setDialogNote('');
+    if (action === 'PROPOSE_CHANGE') {
+      setProposeQuantity(String(selectedActionRow?.quantity ?? ''));
+      setProposeUnitPrice(String(selectedActionRow?.unit_price ?? ''));
+      setProposeDeliveryDate(String(selectedActionRow?.required_in_house_date ?? ''));
+      setActiveDialog('PROPOSE_CHANGE');
+      return;
+    }
+    if (action === 'RAISE_CONCESSION') {
+      setActiveDialog('RAISE_CONCESSION');
+      return;
+    }
+    if (action === 'UPLOAD_DOCUMENT') {
+      setActiveDialog('UPLOAD_DOCUMENT');
+      return;
+    }
+    if (action === 'MOVE_IN') {
+      setActiveDialog('MOVE_IN');
+      return;
+    }
+    if (action === 'MOVE_OUT') {
+      setActiveDialog('MOVE_OUT');
+      return;
+    }
+    if (action === 'SPLIT') {
+      setActiveDialog('SPLIT');
+      return;
+    }
+    setActiveDialog(action as DialogType);
+  }, [closeActionMenu, selectedActionRow]);
+
+  const resolveActionLineId = useCallback(async (row: LineItemTabRow): Promise<string | null> => {
+    const existingLineId = String(row.line_id || row.id || '').trim();
+    if (existingLineId && String(row.po_id || '').trim()) {
+      return existingLineId;
+    }
+
+    const poId = String(row.po_id || row.id || '').trim();
+    if (!poId) {
+      return null;
+    }
+
+    const po = await purchaseOrderService.getPOById(poId);
+    const firstLine = po.line_items?.[0];
+    if (!firstLine) {
+      return null;
+    }
+
+    return String(firstLine.id || String(firstLine.line_number).padStart(5, '0'));
+  }, []);
+
+  const executeRowAction = useCallback(
+    async (action: string, payload: Record<string, unknown> = {}) => {
+      if (!selectedActionRow) {
+        return;
+      }
+
+      const poId = String(selectedActionRow.po_id || selectedActionRow.id || '').trim();
+      if (!poId) {
+        setError('Cannot resolve PO for selected row');
+        return;
+      }
+
+      const lineItemId = await resolveActionLineId(selectedActionRow);
+      if (!lineItemId) {
+        setError('Cannot resolve line item for selected row');
+        return;
+      }
+
+      await purchaseOrderService.performPOAction(poId, {
+        action,
+        line_item_id: lineItemId,
+        ...payload,
+      } as any);
+
+      await fetchPurchaseOrders();
+      closeDialog();
+    },
+    [selectedActionRow, resolveActionLineId, fetchPurchaseOrders, closeDialog]
+  );
+
+  const submitSimpleAction = useCallback(async (action: 'HOLD' | 'ACCEPT' | 'ACKNOWLEDGE' | 'REJECT' | 'NEED_MORE_INFORMATION') => {
+    try {
+      setError(null);
+      await executeRowAction(action, { notes: dialogNote });
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || `Failed to submit ${action}`);
+    }
+  }, [dialogNote, executeRowAction]);
+
+  const submitMoveAction = useCallback(async (action: 'MOVE_IN' | 'MOVE_OUT') => {
+    try {
+      setError(null);
+      const payload = action === 'MOVE_IN' ? { notes: dialogNote, move_in_date: dialogDate } : { notes: dialogNote, move_out_date: dialogDate };
+      await executeRowAction(action, payload);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || `Failed to submit ${action}`);
+    }
+  }, [dialogDate, dialogNote, executeRowAction]);
+
+  const submitSplitAction = useCallback(async () => {
+    try {
+      setError(null);
+      const splits = splitRows
+        .filter((row) => row.quantity && row.delivery_date)
+        .map((row) => ({ quantity: Number(row.quantity), delivery_date: row.delivery_date }));
+      await executeRowAction('SPLIT', { notes: dialogNote, splits });
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to submit SPLIT');
+    }
+  }, [dialogNote, splitRows, executeRowAction]);
+
+  const submitProposeChange = useCallback(async () => {
+    try {
+      setError(null);
+      await executeRowAction('PROPOSE_CHANGE', {
+        notes: dialogNote,
+        proposed_quantity: proposeQuantity ? Number(proposeQuantity) : null,
+        proposed_unit_price: proposeUnitPrice ? Number(proposeUnitPrice) : null,
+        proposed_delivery_date: proposeDeliveryDate || null,
+      });
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to submit PROPOSE_CHANGE');
+    }
+  }, [dialogNote, proposeQuantity, proposeUnitPrice, proposeDeliveryDate, executeRowAction]);
+
+  const submitConcession = useCallback(async () => {
+    try {
+      setError(null);
+      const payload: Record<string, unknown> = {
+        notes: dialogNote,
+        concession_reason: dialogNote,
+        concession_description: concessionDescription,
+      };
+
+      if (uploadFile && selectedActionRow) {
+        const poId = String(selectedActionRow.po_id || selectedActionRow.id || '').trim();
+        const lineItemId = await resolveActionLineId(selectedActionRow);
+
+        if (!poId || !lineItemId) {
+          setError('Cannot resolve PO line for concession upload');
+          return;
+        }
+
+        const uploaded = await purchaseOrderService.uploadPODocument(poId, {
+          line_item_id: lineItemId,
+          file: uploadFile,
+          document_tag_to: selectedDocumentTag || 'CONCESSION',
+          comments: concessionDescription || 'Concession request attachment',
+        });
+
+        const uploadedDocumentId = (uploaded as { id?: string }).id;
+        if (uploadedDocumentId) {
+          payload.document_id = uploadedDocumentId;
+        }
+      }
+
+      await executeRowAction('RAISE_CONCESSION', payload);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to submit RAISE_CONCESSION');
+    }
+  }, [dialogNote, concessionDescription, executeRowAction, uploadFile, selectedActionRow, resolveActionLineId, selectedDocumentTag]);
+
+  const submitUploadDocument = useCallback(async () => {
+    try {
+      setError(null);
+      if (!uploadFile || !selectedActionRow) {
+        setError('Please choose a file before upload');
+        return;
+      }
+
+      const poId = String(selectedActionRow.po_id || selectedActionRow.id || '').trim();
+      const lineItemId = await resolveActionLineId(selectedActionRow);
+
+      if (!poId || !lineItemId) {
+        setError('Cannot resolve PO line for upload');
+        return;
+      }
+
+      await purchaseOrderService.uploadPODocument(poId, {
+        line_item_id: lineItemId,
+        file: uploadFile,
+        document_tag_to: selectedDocumentTag || 'LINE_ITEM',
+        comments: uploadComments,
+      });
+
+      await fetchPurchaseOrders();
+      closeDialog();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to upload document');
+    }
+  }, [uploadFile, uploadComments, selectedActionRow, resolveActionLineId, fetchPurchaseOrders, closeDialog, selectedDocumentTag]);
 
   const appliedFilters = [
     advanceFilters.po_number && {
@@ -460,6 +900,59 @@ const handleSearchChange = useCallback(
   const hasCellValue = (value: unknown) =>
   value !== null && value !== undefined && value !== '';
 
+  const renderNeedByDateCell = useCallback(
+    (value: unknown) => {
+      const dateValue = value ? String(value) : '';
+      if (!dateValue) {
+        return '--';
+      }
+
+      if (!shouldHighlightNeedByDate) {
+        return dateValue;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const threshold = new Date(today);
+      threshold.setDate(today.getDate() + 30);
+
+      const parsed = new Date(dateValue);
+      if (Number.isNaN(parsed.getTime())) {
+        return dateValue;
+      }
+
+      parsed.setHours(0, 0, 0, 0);
+
+      let backgroundColor: string | null = null;
+      if (parsed < today) {
+        backgroundColor = '#D32F2F';
+      } else if (parsed <= threshold) {
+        backgroundColor = '#ED6C02';
+      }
+
+      if (!backgroundColor) {
+        return dateValue;
+      }
+
+      return (
+        <Box
+          sx={{
+            px: 0.75,
+            py: 0.25,
+            borderRadius: 0,
+            color: '#FFFFFF',
+            fontWeight: 600,
+            backgroundColor,
+            display: 'inline-block',
+          }}
+        >
+          {dateValue}
+        </Box>
+      );
+    },
+    [shouldHighlightNeedByDate]
+  );
+
   // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
@@ -512,6 +1005,7 @@ const handleSearchChange = useCallback(
         sx: {
           '&:hover': {
             color: theme.palette.primary.main,
+            borderRadius: 0,
           },
         },
       },
@@ -642,8 +1136,23 @@ const handleSearchChange = useCallback(
             },
           ]
         : []),
+      {
+        field: 'action',
+        headerName: 'Action',
+        width: 70,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <IconButton
+            size="small"
+            onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        ),
+      },
     ],
-    [theme, pinnedPOIds, togglePin, statusColors, user?.role]
+    [theme, pinnedPOIds, togglePin, statusColors, user?.role, openActionMenu]
   );
 
   // console.log(columns.map((c) => c.field));
@@ -707,6 +1216,15 @@ const handleSearchChange = useCallback(
         width: 50,
       },
       {
+        field: 'schedule_line',
+        headerName: 'Sc...',
+        width: 50,
+        valueGetter: (_, row) => {
+          const revision = Number((row as Record<string, unknown>).po_line_revision_no ?? 0);
+          return Number.isNaN(revision) ? '--' : String(revision + 1);
+        },
+      },
+      {
         field: 'material_code',
         headerName: 'Material No',
         width: 110,
@@ -731,6 +1249,25 @@ const handleSearchChange = useCallback(
         renderCell: (params) => params.value || '--',
       },
       {
+        field: 'recommendation',
+        headerName: 'Recommendation',
+        width: 140,
+        renderCell: (params) =>
+          params.value ? (
+            <Typography fontWeight="bold" height="100%" alignContent="center" fontSize="0.75rem" color={theme.palette.primary.light}>
+              {String(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'unit',
+        headerName: 'UOM',
+        width: 50,
+        renderCell: (params) => params.value || '--',
+      },
+      {
         field: 'quantity',
         headerName: 'Qty',
         width: 60,
@@ -738,8 +1275,8 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_quantity',
-        headerName: 'Supplier confirmed Qty',
-        width: 60,
+        headerName: 'Supplier Confirmed Qty',
+        width: 120,
         renderCell: (params) => params.value ?? '--',
       },
       {
@@ -750,8 +1287,8 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_unit_price',
-        headerName: 'Updated Unit Price',
-        width: 70,
+        headerName: 'Revised Unit Price',
+        width: 120,
         renderCell: (params) => formatCurrency(params.value),
         cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
@@ -763,8 +1300,8 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_net_value',
-        headerName: 'Updated Total Value',
-        width: 80,
+        headerName: 'Revised Total Amount',
+        width: 130,
         renderCell: (params) => formatCurrency(params.value),
         cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
@@ -772,7 +1309,7 @@ const handleSearchChange = useCallback(
         field: 'required_in_house_date',
         headerName: 'Need By Date',
         width: 100,
-        renderCell: (params) => params.value || '--',
+        renderCell: (params) => renderNeedByDateCell(params.value),
       },
       {
         field: 'updated_delivery_date',
@@ -795,8 +1332,33 @@ const handleSearchChange = useCallback(
         renderCell: (params) => params.value || '--',
         cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
       },
+      {
+        field: 'documents',
+        headerName: 'Documents',
+        width: 90,
+        renderCell: (params) => {
+          const docs = params.value as unknown;
+          const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
+          return hasDocs ? '📎' : '--';
+        },
+      },
+      {
+        field: 'action',
+        headerName: 'Action',
+        width: 70,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <IconButton
+            size="small"
+            onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        ),
+      },
     ],
-    [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors]
+    [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors, renderNeedByDateCell, openActionMenu]
   );
 
   //MRP exception coulumns
@@ -855,8 +1417,23 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'line_number',
-        headerName: 'Line Item',
+        headerName: 'PO Line',
         width: 50,
+      },
+      {
+        field: 'schedule_line',
+        headerName: 'Sc...',
+        width: 50,
+        valueGetter: (_, row) => {
+          const revision = Number((row as Record<string, unknown>).po_line_revision_no ?? 0);
+          return Number.isNaN(revision) ? '--' : String(revision + 1);
+        },
+      },
+      {
+        field: 'material_code',
+        headerName: 'Material No',
+        width: 100,
+        renderCell: (params) => params.value || '--',
       },
       {
         field: 'description',
@@ -896,20 +1473,10 @@ const handleSearchChange = useCallback(
         renderCell: (params) => formatCurrency(params.value),
       },
       {
-        field: 'recommendation',
-        headerName: 'Recommendations',
-        width: 160,
-        renderCell: (params) => (
-          <Typography
-            fontWeight="bold"
-            height="100%"
-            alignContent="center"
-            fontSize="0.8rem"
-            color={theme.palette.primary.light}
-          >
-            {params.value || '--'}
-          </Typography>
-        ),
+        field: 'unit',
+        headerName: 'UOM',
+        width: 50,
+        renderCell: (params) => params.value || '--',
       },
       {
         field: 'quantity',
@@ -919,8 +1486,8 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_quantity',
-        headerName: 'Updated Qty',
-        width: 60,
+        headerName: 'Supplier Confirmed Qty',
+        width: 120,
         renderCell: (params) =>
           params.value !== null && params.value !== undefined ? (
             <Typography
@@ -937,10 +1504,36 @@ const handleSearchChange = useCallback(
           ),
       },
       {
+        field: 'updated_unit_price',
+        headerName: 'Revised Unit Price',
+        width: 120,
+        renderCell: (params) =>
+          params.value ? (
+            <Typography fontWeight="bold" height="100%" alignContent="center" fontSize="0.8rem" color={theme.palette.primary.light}>
+              {formatCurrency(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
         field: 'required_in_house_date',
         headerName: 'Need By Date',
         width: 100,
-        renderCell: (params) => params.value || '--',
+        renderCell: (params) => renderNeedByDateCell(params.value),
+      },
+      {
+        field: 'updated_net_value',
+        headerName: 'Revised Total Amount',
+        width: 130,
+        renderCell: (params) =>
+          params.value ? (
+            <Typography fontWeight="bold" height="100%" alignContent="center" fontSize="0.8rem" color={theme.palette.primary.light}>
+              {formatCurrency(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
       },
       {
         field: 'updated_delivery_date',
@@ -962,16 +1555,29 @@ const handleSearchChange = useCallback(
           ),
       },
       {
-        field: 'revision_changes',
-        headerName: 'Rev.',
-        width: 50,
-        renderCell: (params) => params.value ?? '--',
+        field: 'documents',
+        headerName: 'Documents',
+        width: 90,
+        renderCell: (params) => {
+          const docs = params.value as unknown;
+          const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
+          return hasDocs ? '📎' : '--';
+        },
       },
       {
-        field: 'site',
-        headerName: 'Site',
-        width: 60,
-        renderCell: (params) => params.value || '--',
+        field: 'action',
+        headerName: 'Action',
+        width: 70,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <IconButton
+            size="small"
+            onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        ),
       },
       // {
       //   field: 'action',
@@ -986,29 +1592,47 @@ const handleSearchChange = useCallback(
       //   ),
       // },
     ],
-    [theme, statusColors,pinnedMRPLineItemIds,toggleMRPLinePin]
+    [theme, statusColors,pinnedMRPLineItemIds,toggleMRPLinePin, renderNeedByDateCell, openActionMenu]
   );
 
   //saperate page view for supplier & PS
-  const supplierColumns = React.useMemo(
-    () =>
-      columns.filter((col) =>
-        [
-          'pin',
-          'po_number',
-          'status',
-          'supplier_name',
-          'total_value',
-          'line_items',
-          'revision_changes',
-          'buyer_name',
-          'buyer_email',
-          'buyer_phone',
-          'site',
-        ].includes(col.field)
-      ),
-    [columns]
-  );
+  const supplierColumns = React.useMemo(() => {
+    const map = new Map(columns.map((col) => [col.field, col]));
+    const orderedFields = [
+      'pin',
+      'po_number',
+      'supplier_name',
+      'total_value',
+      'line_items',
+      'revision_changes',
+      'buyer_name',
+      'buyer_email',
+      'buyer_phone',
+      'site',
+      'status',
+    ];
+
+    return orderedFields
+      .map((field) => {
+        const column = map.get(field);
+        if (!column) {
+          return null;
+        }
+
+        if (field === 'supplier_name') {
+          return { ...column, headerName: 'Supplier Name' };
+        }
+        if (field === 'revision_changes') {
+          return { ...column, headerName: 'Rev', width: 60 };
+        }
+        if (field === 'buyer_email') {
+          return { ...column, headerName: 'Buyer Email Id' };
+        }
+
+        return column;
+      })
+      .filter((value): value is GridColDef => value !== null);
+  }, [columns]);
 
   const gridColumns = React.useMemo(
     () => (user?.role === 'SUPPLIER' ? supplierColumns : columns),
@@ -1021,12 +1645,12 @@ const handleSearchChange = useCallback(
         return poToReviewColumns;
 
       case 3: // MRP EXCEPTION
-        return mrpExceptionColumns;
+        return isSupplierCollaboration ? poToReviewColumns : mrpExceptionColumns;
 
       default:
         return gridColumns;
     }
-  }, [selectedTab, poToReviewColumns, mrpExceptionColumns, gridColumns]);
+  }, [selectedTab, isSupplierCollaboration, poToReviewColumns, mrpExceptionColumns, gridColumns]);
 
   const displayedRows = React.useMemo(() => {
     const rows = pinFilter === 'pinned' ? pinnedPOs : purchaseOrders;
@@ -1122,6 +1746,7 @@ const handleSearchChange = useCallback(
           onSelectedSitesChange={handleSelectedSitesChange}
           userRole={user?.role}
           selectedTab={selectedTab}
+          tabs={moduleTabs}
           onTabChange={(tab) => {
             setSelectedTab(tab);
             setPage(0);
@@ -1181,9 +1806,6 @@ const handleSearchChange = useCallback(
     ]
   );
   
-console.log(columns.map((c) => c.field));
-
-
   //saperate page view for supplier & PS
   // const supplierColumns = React.useMemo(
   //   () =>
@@ -1271,7 +1893,7 @@ console.log(columns.map((c) => c.field));
             lineHeight: 1.2,
           }}
         >
-          Purchase Order Listing
+          {MODULE_TITLE[moduleVariant]}
         </Typography>
       </Box>
 
@@ -1313,7 +1935,8 @@ console.log(columns.map((c) => c.field));
           onPaginationModelChange={handlePaginationModelChange}
           paginationModel={{ page, pageSize }}
           getRowId={(row) => row.id}
-          disableRowSelectionOnClick
+          checkboxSelection
+          disableRowSelectionOnClick={!isLineItemTab}
           sortingMode={isLineItemTab || currentPinFilter === 'pinned' ? 'client' : 'server'}
           onSortModelChange={(model) => {
             console.log('sort model: ', model);
@@ -1334,9 +1957,7 @@ console.log(columns.map((c) => c.field));
             setPage(0);
           }}
           onRowClick={(params) => {
-            if (!isLineItemTab) {
-              handleGridRowClick(params.row);
-            }
+            handleGridRowClick(params.row);
           }}
           localeText={{
             noRowsLabel:
@@ -1347,17 +1968,27 @@ console.log(columns.map((c) => c.field));
                   : 'No purchase orders found',
           }}
           sx={{
+            borderRadius: 0,
             '& .MuiDataGrid-row': {
-              cursor: isLineItemTab ? 'default' : 'pointer',
+              cursor: 'pointer',
               '&:hover': {
                 backgroundColor: '#F8EFE7',
               },
               fontSize: '0.8rem',
             },
 
+            '& .MuiDataGrid-cell': {
+              borderRadius: 0,
+            },
+
+            '& .MuiDataGrid-columnHeader': {
+              borderRadius: 0,
+            },
+
             '& .MuiDataGrid-toolbarContainer': {
               justifyContent: 'flex-end',
               width: '100%',
+              borderRadius: 0,
             },
 
             '& .changed-cell': {
@@ -1578,6 +2209,176 @@ console.log(columns.map((c) => c.field));
           </Box>
         </DialogActions>
       </Dialog>
+
+      <Menu anchorEl={actionAnchorEl} open={Boolean(actionAnchorEl)} onClose={closeActionMenu}>
+        {getCurrentTabActions().map((action) => (
+          <ActionMenuItem key={action} onClick={() => openDialogForAction(action)}>
+            {ACTION_LABELS[action] || action}
+          </ActionMenuItem>
+        ))}
+      </Menu>
+
+      <MoveDateDialog
+        open={activeDialog === 'MOVE_IN'}
+        mode="MOVE_IN"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        currentDate={String(selectedActionRow?.required_in_house_date || '')}
+        date={dialogDate}
+        onDateChange={setDialogDate}
+        onClose={closeDialog}
+        onSubmit={() => void submitMoveAction('MOVE_IN')}
+      />
+
+      <MoveDateDialog
+        open={activeDialog === 'MOVE_OUT'}
+        mode="MOVE_OUT"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        currentDate={String(selectedActionRow?.shipment_date || '')}
+        date={dialogDate}
+        onDateChange={setDialogDate}
+        onClose={closeDialog}
+        onSubmit={() => void submitMoveAction('MOVE_OUT')}
+      />
+
+      <SplitDialog
+        open={activeDialog === 'SPLIT'}
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        rows={splitRows}
+        note={dialogNote}
+        onChangeRows={setSplitRows}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitSplitAction()}
+      />
+
+      <SimpleInfoDialog
+        open={activeDialog === 'HOLD'}
+        title="Hold"
+        submitLabel="Submit Hold Request"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        deliveryDate={String(selectedActionRow?.required_in_house_date || '')}
+        note={dialogNote}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitSimpleAction('HOLD')}
+      />
+
+      <SimpleInfoDialog
+        open={activeDialog === 'ACCEPT'}
+        title="Accept"
+        submitLabel="Submit Acceptance"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        deliveryDate={String(selectedActionRow?.required_in_house_date || '')}
+        note={dialogNote}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitSimpleAction('ACCEPT')}
+      />
+
+      <SimpleInfoDialog
+        open={activeDialog === 'ACKNOWLEDGE'}
+        title="Acknowledge"
+        submitLabel="Submit Acknowledgement"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        deliveryDate={String(selectedActionRow?.required_in_house_date || '')}
+        note={dialogNote}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitSimpleAction('ACKNOWLEDGE')}
+      />
+
+      <SimpleInfoDialog
+        open={activeDialog === 'REJECT'}
+        title="Reject"
+        submitLabel="Submit Rejection"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        deliveryDate={String(selectedActionRow?.required_in_house_date || '')}
+        note={dialogNote}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitSimpleAction('REJECT')}
+      />
+
+      <SimpleInfoDialog
+        open={activeDialog === 'NEED_MORE_INFORMATION'}
+        title="Need More Information"
+        submitLabel="Submit Info Request"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={Number(selectedActionRow?.quantity || 0)}
+        deliveryDate={String(selectedActionRow?.required_in_house_date || '')}
+        note={dialogNote}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitSimpleAction('NEED_MORE_INFORMATION')}
+      />
+
+      <ProposeChangeDialog
+        open={activeDialog === 'PROPOSE_CHANGE'}
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        quantity={proposeQuantity}
+        unitPrice={proposeUnitPrice}
+        deliveryDate={proposeDeliveryDate}
+        note={dialogNote}
+        onQuantityChange={setProposeQuantity}
+        onUnitPriceChange={setProposeUnitPrice}
+        onDeliveryDateChange={setProposeDeliveryDate}
+        onNoteChange={setDialogNote}
+        onClose={closeDialog}
+        onSubmit={() => void submitProposeChange()}
+      />
+
+      <RaiseConcessionDialog
+        open={activeDialog === 'RAISE_CONCESSION'}
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        materialCode={String(selectedActionRow?.material_code || '')}
+        description={String(selectedActionRow?.description || '')}
+        documentsRows={[]}
+        documentTags={documentTags}
+        selectedDocumentTag={selectedDocumentTag}
+        selectedDocumentId={selectedDocumentTag}
+        uploadFile={uploadFile}
+        reason={dialogNote}
+        concessionDescription={concessionDescription}
+        onReasonChange={setDialogNote}
+        onDocumentIdChange={setSelectedDocumentTag}
+        onUploadFileChange={setUploadFile}
+        onConcessionDescriptionChange={setConcessionDescription}
+        onClose={closeDialog}
+        onSubmit={() => void submitConcession()}
+      />
+
+      <UploadDocumentDialog
+        open={activeDialog === 'UPLOAD_DOCUMENT'}
+        mode="UPLOAD"
+        lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
+        uploadFile={uploadFile}
+        uploadComments={uploadComments}
+        documentTags={documentTags}
+        selectedDocumentTag={selectedDocumentTag}
+        selectedDocumentName={undefined}
+        documentsRows={[]}
+        onUploadFileChange={setUploadFile}
+        onSelectedDocumentTagChange={setSelectedDocumentTag}
+        onUploadCommentsChange={setUploadComments}
+        onDownloadDocument={() => undefined}
+        onClose={closeDialog}
+        onSubmit={() => void submitUploadDocument()}
+      />
     </Box>
   );
 };

@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { Close, Delete, Download, OpenInFull, Upload } from '@mui/icons-material';
-import { Box, Button, Dialog, DialogActions, DialogContent, Divider, IconButton, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, Divider, IconButton, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 
 import { poDetailsColors } from './constants';
 import { DocsRow } from '@/pages/purchaseOrderDetails/types';
 
 type UploadDocumentDialogProps = {
   open: boolean;
+  mode: 'UPLOAD' | 'REPLACE';
+  poNumber?: string;
   lineId: string;
   uploadFile: File | null;
   uploadComments: string;
+  documentTags: string[];
+  selectedDocumentTag: string;
+  selectedDocumentName?: string;
   documentsRows: DocsRow[];
   onUploadFileChange: (file: File | null) => void;
+  onSelectedDocumentTagChange: (value: string) => void;
   onUploadCommentsChange: (value: string) => void;
   onDownloadDocument: (document: DocsRow) => void;
   onClose: () => void;
@@ -20,23 +26,37 @@ type UploadDocumentDialogProps = {
 
 const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
   open,
+  mode,
+  poNumber,
   lineId,
   uploadFile,
   uploadComments,
+  documentTags,
+  selectedDocumentTag,
+  selectedDocumentName,
   documentsRows,
   onUploadFileChange,
+  onSelectedDocumentTagChange,
   onUploadCommentsChange,
   onDownloadDocument,
   onClose,
   onSubmit,
 }) => {
   const [fullscreen, setFullscreen] = useState(false);
+  const title = mode === 'REPLACE' ? 'Replace Document' : 'Upload Document';
+  const submitLabel = mode === 'REPLACE' ? 'Replace Document' : 'Upload Document';
+  const availableTags = documentTags.length > 0 ? documentTags : ['LINE_ITEM'];
+  const poSuffix = poNumber ? ` - PO ${poNumber}` : '';
+  const headerSuffix = lineId ? ` - PO Line ${lineId}` : '';
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={fullscreen} PaperProps={{ sx: { borderRadius: fullscreen ? 0 : 1.5 } }}>
       <Box sx={{ position: 'relative' }}>
         <Box sx={{ px: 2, py: 1, backgroundColor: poDetailsColors.darkBlue, color: '#fff' }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Uploaded Document - PO Line {lineId}</Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 700 }}>
+            {`${title}${poSuffix}${headerSuffix}`}
+            {mode === 'REPLACE' && selectedDocumentName ? ` (${selectedDocumentName})` : ''}
+          </Typography>
         </Box>
         <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', right: 8, top: 8 }} alignItems="center">
           <IconButton size="small" onClick={() => setFullscreen((value) => !value)} sx={{ color: 'common.white' }}>
@@ -65,6 +85,21 @@ const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
           </Paper>
 
           <Box sx={{ px: 2 }}>
+            <TextField
+              label="Document Tag"
+              select
+              fullWidth
+              size="small"
+              value={selectedDocumentTag}
+              onChange={(e) => onSelectedDocumentTagChange(e.target.value)}
+              sx={{ mb: 2 }}
+            >
+              {availableTags.map((tag) => (
+                <MenuItem key={tag} value={tag}>
+                  {tag}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField label="Comments" fullWidth size="small" multiline rows={3} value={uploadComments} onChange={(e) => onUploadCommentsChange(e.target.value)} />
           </Box>
 
@@ -91,7 +126,7 @@ const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
 
       <DialogActions sx={{ p: 2 }}>
         <Button variant="outlined" onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={onSubmit}>Save</Button>
+        <Button variant="contained" onClick={onSubmit}>{submitLabel}</Button>
       </DialogActions>
     </Dialog>
   );

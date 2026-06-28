@@ -5,6 +5,8 @@ import {
   GridFilterModel,
   GridColDef,
   GridToolbarColumnsButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
   GridToolbarFilterButton,
 } from '@mui/x-data-grid';
 import { PushPin, PushPinOutlined, Search } from '@mui/icons-material';
@@ -21,6 +23,7 @@ type LineItemsTabProps = {
   checkboxSelection?: boolean;
   rowSelectionModel?: string[];
   onRowSelectionModelChange?: (selectedRowIds: string[]) => void;
+  onRowClick?: (row: LineItem) => void;
 };
 
 type LineItemsToolbarProps = {
@@ -104,6 +107,20 @@ const LineItemsToolbar: React.FC<LineItemsToolbarProps> = ({
               },
             }}
           />
+          <GridToolbarDensitySelector
+            slotProps={{
+              button: {
+                sx: { minWidth: 40, px: 1, py: 0.5 },
+              },
+            }}
+          />
+          <GridToolbarExport
+            slotProps={{
+              button: {
+                sx: { minWidth: 40, px: 1, py: 0.5 },
+              },
+            }}
+          />
           <Tooltip title="Pin filter" sx={{ mr: 0.5 }}>
             <Badge
               badgeContent={pinnedCount || null}
@@ -140,9 +157,10 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
   pinnedCount,
   linePinFilter,
   onTogglePinFilter,
-  checkboxSelection = false,
+  checkboxSelection = true,
   rowSelectionModel = [],
   onRowSelectionModelChange,
+  onRowClick,
 }) => {
   const [filterModel, setFilterModel] = useState<GridFilterModel>({
     items: [],
@@ -160,6 +178,7 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
           checkboxSelection={checkboxSelection}
           rowSelectionModel={rowSelectionModel}
           onRowSelectionModelChange={(model) => onRowSelectionModelChange?.(model as string[])}
+          onRowClick={(params) => onRowClick?.(params.row as LineItem)}
           getRowClassName={(params) => (String(params.row.line_status || '').toUpperCase().includes('HOLD') ? 'line-row--disabled' : '')}
           pageSizeOptions={[10, 20, 50]}
           initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
@@ -187,15 +206,18 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
           }}
           sx={{
             border: '0px',
+            borderRadius: 0,
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #eef2f7',
               display: 'flex',
               alignItems: 'center',
+              borderRadius: 0,
             },
             '& .MuiDataGrid-columnHeaders': { borderBottom: '1px solid #d6dde8' },
             '& .MuiDataGrid-columnHeader': {
               display: 'flex',
               alignItems: 'center',
+              borderRadius: 0,
             },
             '& .MuiDataGrid-row:hover': { backgroundColor: '#f8fbff' },
             '& .MuiDataGrid-row.line-row--disabled': {
@@ -214,6 +236,7 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
               px: 1,
               py: 0.5,
               overflow: 'visible',
+              borderRadius: 0,
             },
           }}
         />

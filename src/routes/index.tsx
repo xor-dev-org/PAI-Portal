@@ -7,6 +7,9 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetails from '@/pages/PurchaseOrderDetails';
+import SupplierCollaboration from '@/pages/SupplierCollaboration';
+import Cockpit from '@/pages/Cockpit';
+import LineItemDetails from '@/pages/LineItemDetails';
 import Delegation from '@/pages/Delegation';
 import Chat from '@/pages/Chat';
 import Settings from '@/pages/Settings';
@@ -49,6 +52,39 @@ const AppRoutes: React.FC = () => {
             <PrivateRoute>
               <AppLayout>
                 <PurchaseOrderDetails />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/purchase-orders/:id/line-items/:lineId"
+          element={
+            <PrivateRoute>
+              <AppLayout>
+                <LineItemDetails />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/supplier-collaboration"
+          element={
+            <PrivateRoute allowedRoles={[UserRole.SUPPLIER, UserRole.ADMIN]}>
+              <AppLayout>
+                <SupplierCollaboration />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/cockpit"
+          element={
+            <PrivateRoute allowedRoles={[UserRole.PROCUREMENT_SPECIALIST, UserRole.ADMIN]}>
+              <AppLayout>
+                <Cockpit />
               </AppLayout>
             </PrivateRoute>
           }

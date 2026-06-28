@@ -1,5 +1,6 @@
 export type DocsRow = {
   id: string;
+  line_item_id?: string;
   file_name?: string;
   file_path?: string;
   file_type?: string;

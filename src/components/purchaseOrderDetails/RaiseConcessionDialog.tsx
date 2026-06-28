@@ -7,10 +7,13 @@ import { DocsRow } from '@/pages/purchaseOrderDetails/types';
 
 type RaiseConcessionDialogProps = {
   open: boolean;
+  poNumber?: string;
   lineId: string;
   materialCode?: string;
   description?: string;
   documentsRows: DocsRow[];
+  documentTags: string[];
+  selectedDocumentTag: string;
   selectedDocumentId: string;
   uploadFile: File | null;
   reason: string;
@@ -25,6 +28,7 @@ type RaiseConcessionDialogProps = {
 
 const RaiseConcessionDialog: React.FC<RaiseConcessionDialogProps> = ({
   open,
+  poNumber,
   lineId,
   materialCode,
   description,
@@ -36,18 +40,21 @@ const RaiseConcessionDialog: React.FC<RaiseConcessionDialogProps> = ({
   onReasonChange,
   onDocumentIdChange,
   onUploadFileChange,
+  documentTags,
+  selectedDocumentTag,
   onConcessionDescriptionChange,
   onClose,
   onSubmit,
 }) => {
-  void documentsRows;
   void selectedDocumentId;
-  void onDocumentIdChange;
+  const availableTags = documentTags.length > 0 ? documentTags : ['CONCESSION'];
+  const poSuffix = poNumber ? ` - PO ${poNumber}` : '';
+  const headerSuffix = lineId ? ` - PO Line ${lineId}` : '';
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 1 } }}>
       <Box sx={{ px: 2, py: 1, backgroundColor: poDetailsColors.darkBlue, color: '#fff', position: 'relative' }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Concession Request - PO Line {lineId}</Typography>
+        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{`Concession Request${poSuffix}${headerSuffix}`}</Typography>
         <IconButton size="small" onClick={onClose} sx={{ color: 'common.white', position: 'absolute', right: 8, top: 8 }}>
           <Close fontSize="small" />
         </IconButton>
@@ -75,21 +82,20 @@ const RaiseConcessionDialog: React.FC<RaiseConcessionDialogProps> = ({
                   <MenuItem value="Surface finish deviation">Surface finish deviation</MenuItem>
                   <MenuItem value="Other">Other</MenuItem>
                 </TextField>
-                {/* <TextField
-                  label="Document"
+                <TextField
+                  label="Document Tag"
                   select
                   fullWidth
                   size="small"
-                  value={selectedDocumentId}
+                  value={selectedDocumentTag}
                   onChange={(e) => onDocumentIdChange(e.target.value)}
                 >
-                  <MenuItem value="">Select document</MenuItem>
-                  {documentsRows.map((document) => (
-                    <MenuItem key={document.id} value={document.id}>
-                      {document.file_name || document.file_path || document.id}
+                  {availableTags.map((tag) => (
+                    <MenuItem key={tag} value={tag}>
+                      {tag}
                     </MenuItem>
                   ))}
-                </TextField> */}
+                </TextField>
                 <TextField label="Description" fullWidth size="small" multiline rows={4} value={concessionDescription} onChange={(e) => onConcessionDescriptionChange(e.target.value)} />
               </Stack>
             </Box>
@@ -108,6 +114,11 @@ const RaiseConcessionDialog: React.FC<RaiseConcessionDialogProps> = ({
               <input hidden type="file" onChange={(e) => onUploadFileChange(e.target.files?.[0] || null)} />
             </Button>
             {uploadFile ? <Typography variant="caption">Selected: {uploadFile.name}</Typography> : null}
+            {documentsRows.length ? (
+              <Typography variant="caption" color="text.secondary">
+                Existing Documents: {documentsRows.length}
+              </Typography>
+            ) : null}
             {uploadFile ? (
               <Button size="small" variant="text" onClick={() => onUploadFileChange(null)}>
                 Clear
