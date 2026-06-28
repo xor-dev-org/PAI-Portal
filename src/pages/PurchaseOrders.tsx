@@ -345,6 +345,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
           sort_order: sortModel.sort_order,
           include_line_items_only: true,
         };
+        
+        if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
+          lineItemFilters.site = selectedSites.join(',');
+        }
+
 
         if (!isSupplierCollaboration) {
           lineItemFilters.tab_mode = selectedTab === 2 ? 'ready_to_review' : 'mrp_exception';
