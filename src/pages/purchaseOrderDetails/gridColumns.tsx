@@ -1,7 +1,8 @@
 import React from 'react';
-import { Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { Check, Close, InfoOutlined, MoreVert, PushPin, PushPinOutlined, Download, Replay } from '@mui/icons-material';
 import { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 import { LineItem } from '@/models';
 import { DocsRow } from './types';
@@ -14,6 +15,7 @@ type LineColumnOptions = {
   highlightNeedByDate?: boolean;
   onConcessionClick?: (line: LineItem) => void;
   onSupplierConfirmationClick?: (line: LineItem) => void;
+  onDocumentsClick?: (line: LineItem) => void;
 };
 
 type DocumentColumnOptions = {
@@ -30,6 +32,7 @@ export const buildLineColumns = ({
   highlightNeedByDate = false,
   onConcessionClick,
   onSupplierConfirmationClick,
+  onDocumentsClick,
 }: LineColumnOptions): GridColDef[] => {
   const renderNeedByCell = (params: GridRenderCellParams<LineItem>) => {
     const dateValue = String(params.value || '');
@@ -231,7 +234,28 @@ export const buildLineColumns = ({
       renderCell: (params: GridRenderCellParams<LineItem>) => {
         const docs = (params.row as any).documents;
         const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
-        return <Typography variant="body2">{hasDocs ? '📎' : '--'}</Typography>;
+        const handleDocumentsClick = (event: React.MouseEvent<HTMLElement>) => {
+          event.stopPropagation();
+          onDocumentsClick?.(params.row);
+        };
+
+        return (
+          <Box
+            role="button"
+            tabIndex={0}
+            aria-label={`Open documents for ${formatLineId(params.row)}`}
+            onClick={handleDocumentsClick}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleDocumentsClick(event as unknown as React.MouseEvent<HTMLElement>);
+              }
+            }}
+            sx={{ display: 'inline-flex', alignItems: 'center', cursor: onDocumentsClick ? 'pointer' : 'default' }}
+          >
+            {hasDocs ? <AttachFileIcon /> : '--'}
+          </Box>
+        );
       },
     },
     {

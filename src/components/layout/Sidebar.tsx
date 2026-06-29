@@ -86,12 +86,13 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle, desktopOp
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        // height: '100%',
         bgcolor: 'background.paper',
         color: 'text.primary',
         borderRight: '1px solid',
         borderColor: 'divider',
         marginTop: '5rem',
+        
       }}
     >
       <Toolbar
