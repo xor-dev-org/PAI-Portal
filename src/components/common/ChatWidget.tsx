@@ -573,6 +573,23 @@ useEffect(() => {
             latestVisibleMessageId
         );
 
+        lastReadSyncRef.current[conversation.id] = latestVisibleMessageId;
+
+        setConversations((prev) =>
+            prev.map((c) =>
+                c.id === conversation.id
+                    ? {
+                          ...c,
+                          unread: 0,
+                      }
+                    : c
+            )
+        );
+
+        setUnreadMap((prev) => ({
+            ...prev,
+            [conversation.id]: 0,
+        }));
         console.log("Read receipt sent", receiptKey);
       }
 
@@ -1016,10 +1033,27 @@ useEffect(() => {
 
           sessionEntry.seenMessageIds.add(mappedMessage.messageKey);
 
+          const updatedMessages = appendUniqueMessage(
+              acsMessagesByConversationRef.current[conversationId] || [],
+              mappedMessage
+          );
+
           setAcsMessagesByConversation((prev) => ({
-            ...prev,
-            [conversationId]: appendUniqueMessage(prev[conversationId] || [], mappedMessage),
+              ...prev,
+              [conversationId]: updatedMessages,
           }));
+
+          if (
+              mappedMessage.sender === "other" &&
+              open &&
+              selectedConversationId === conversationId
+          ) {
+              void syncConversationReadState(
+                  conversationsRef.current.find(c => c.id === conversationId)!,
+                  thread,
+                  updatedMessages
+              );
+          }
 
           setConversations((prev) =>
             prev.map((conversation) =>
@@ -1305,7 +1339,14 @@ client.on(
             const sortedMessages = normalizeMessageList(
               [...refreshedMessages].sort((left, right) => (left.createdAtMs || 0) - (right.createdAtMs || 0))
             );
-            const unread = countUnreadMessages(sortedMessages, chat.lastReadMessageId);
+            const effectiveLastRead =
+                lastReadSyncRef.current[conversationId] ??
+                chat.lastReadMessageId;
+
+            const unread = countUnreadMessages(
+                sortedMessages,
+                effectiveLastRead
+            );
 
             return {
               conversation: createConversationFromContext(context, existingConversation),
@@ -1340,7 +1381,15 @@ client.on(
 
     return {
         ...msg,
-        read: existing?.read ?? msg.read ?? false,
+        read:
+    existing?.read ||
+    (
+        lastReadSyncRef.current[conversation.id] &&
+        String(msg.acsMessageId) <=
+            String(lastReadSyncRef.current[conversation.id])
+    ) ||
+    msg.read ||
+    false,
     };
 });
 
@@ -1357,17 +1406,37 @@ next[conversation.id] = [...mergedAcsMessages, ...nonAcsMessages].sort(
     return next;
 });
 
-        setConversations((prev) =>
-          mergeConversations(
-            prev,
-            successfulUpdates.map(({ conversation, messages, unread }) => ({
-              ...conversation,
-              lastMessage: getNewestMessage(messages)?.text || conversation.lastMessage,
-              lastTime: getNewestMessage(messages)?.time || conversation.lastTime,
-              unread,
-            }))
-          )
-        );
+        setConversations((prev) => {
+  const updates = successfulUpdates.map(({ conversation, messages, unread }) => ({
+    ...conversation,
+    lastMessage: getNewestMessage(messages)?.text || conversation.lastMessage,
+    lastTime: getNewestMessage(messages)?.time || conversation.lastTime,
+    unread,
+  }));
+
+  setSelectedId((prev) => {
+  if (prev == null) {
+    return conversationsRef.current[0]?.id ?? -999;
+  }
+
+  return prev;
+});
+
+  return prev.map((existing) => {
+    const updated = updates.find((u) => u.id === existing.id);
+
+    if (!updated) {
+      return existing;
+    }
+
+    return {
+      ...existing,
+      lastMessage: updated.lastMessage,
+      lastTime: updated.lastTime,
+      unread: updated.unread,
+    };
+  });
+});
 
         setUnreadMap((prev) => {
           const next = { ...prev };
@@ -1416,14 +1485,14 @@ next[conversation.id] = [...mergedAcsMessages, ...nonAcsMessages].sort(
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      void refreshBackendSessions();
-      void refreshAcsBootstrapState();
+      if (!open) {
+        void refreshBackendSessions();
+        void refreshAcsBootstrapState();
+      }
     }, 10000);
 
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, []);
+    return () => window.clearInterval(interval);
+  }, [open]);
 
   useEffect(() => {
     if (backgroundChatBootstrapStartedRef.current) {
