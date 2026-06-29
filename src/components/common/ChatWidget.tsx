@@ -364,24 +364,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     const firstId =
         updatedConversations[0]?.id ?? AI_CONVERSATION.id;
 
-    setConversations((prev) => {
-        const persisted = prev.filter(
-            (conversation) =>
-                conversation.id !== -999 &&
-                !initialConversations.some(
-                    (item) => item.id === conversation.id
-                )
-        );
-
-        const merged = mergeConversations(
-            updatedConversations,
-            persisted
-        );
-
-        return JSON.stringify(prev) === JSON.stringify(merged)
-            ? prev
-            : merged;
-    });
+    setConversations
 
     setSelectedId((prev) => prev ?? firstId);
 }, [
@@ -407,13 +390,29 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
     ? hashString(activeChatContext.poNumber || activeChatContext.threadId || 'po-chat')
     : null;
 
-  const selectedConversationMessages = useMemo(() => {
-    if (selectedConversationId === null || selectedConversationId === -999) {
-      return [];
+const selectedConversationMessages = useMemo(() => {
+    if (selectedConversationId === null) {
+        return [];
     }
 
-    return normalizeMessageList(acsMessagesByConversation[selectedConversationId] || []);
-  }, [selectedConversationId, acsMessagesByConversation]);
+    if (selectedConversationId === -999) {
+        return selectedConversation?.messages || [];
+    }
+
+    return normalizeMessageList(
+        acsMessagesByConversation[selectedConversationId] || []
+    );
+}, [
+    selectedConversationId,
+    selectedConversation,
+    acsMessagesByConversation,
+]);
+
+useEffect(() => {
+  console.log("Selected Conversation:", selectedConversation?.id);
+  console.log("AI Messages:", selectedConversation?.messages);
+  console.log("Messages being rendered:", selectedConversationMessages);
+}, [selectedConversation, selectedConversationMessages]);
 
   const getConversationSession = (conversationId: number) =>
     backendSessions.find((session) => getSessionConversationKey(session) === conversationId) ||
@@ -580,17 +579,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
       
 
       setAcsMessagesByConversation((prev) => ({
-        ...prev,
-        [conversation.id]: (prev[conversation.id] || []).map((msg) =>
-          msg.sender === 'other'
-            ? {
-                ...msg,
-                read: true,
-                readReceiptSent: true,
-              }
-            : msg
-        ),
-      }));
+  ...prev,
+  [conversation.id]: (prev[conversation.id] || []).map((msg) =>
+    msg.sender === "other" && !msg.readReceiptSent
+      ? {
+          ...msg,
+          readReceiptSent: true,
+        }
+      : msg
+  ),
+}));
 
       lastReadReceiptSyncKeyRef.current[conversation.id] = syncKey;
     } catch (error) {
@@ -1335,16 +1333,25 @@ client.on(
     successfulUpdates.forEach(({ conversation, messages }) => {
         const previousMessages = prev[conversation.id] || [];
 
-        next[conversation.id] = messages.map((msg) => {
-            const existing = previousMessages.find(
-                (m) => String(m.acsMessageId) === String(msg.acsMessageId)
-            );
+        const mergedAcsMessages = messages.map((msg) => {
+    const existing = previousMessages.find(
+        (m) => String(m.acsMessageId) === String(msg.acsMessageId)
+    );
 
-            return {
-                ...msg,
-                read: existing?.read ?? msg.read ?? false,
-            };
-        });
+    return {
+        ...msg,
+        read: existing?.read ?? msg.read ?? false,
+    };
+});
+
+// Preserve messages that don't belong to ACS (AI/system messages)
+const nonAcsMessages = previousMessages.filter(
+    (m) => !m.acsMessageId
+);
+
+next[conversation.id] = [...mergedAcsMessages, ...nonAcsMessages].sort(
+    (a, b) => (a.createdAtMs || 0) - (b.createdAtMs || 0)
+);
     });
 
     return next;
@@ -1890,13 +1897,13 @@ client.on(
                   accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                 />
                 
-                <IconButton 
+                {/* <IconButton 
                   color={selectedFile ? "info" : "default"} 
                   onClick={() => fileInputRef.current?.click()} 
                   aria-label="Attach file"
                 >
                   <AttachFile />
-                </IconButton>
+                </IconButton> */}
 
                 <TextField 
                   fullWidth 
