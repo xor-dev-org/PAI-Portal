@@ -173,6 +173,7 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
       <Box sx={{ height: 520 }}>
         <DataGrid
           rows={displayedLineItems}
+          rowHeight={35}
           getRowId={(row) => formatLineId(row)}
           columns={columns}
           checkboxSelection={checkboxSelection}
@@ -219,7 +220,7 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
               alignItems: 'center',
               borderRadius: 0,
             },
-            '& .MuiDataGrid-row:hover': { backgroundColor: '#f8fbff' },
+            '& .MuiDataGrid-row:hover': { backgroundColor: '#F8EFE7' },
             '& .MuiDataGrid-row.line-row--disabled': {
               opacity: 0.55,
               backgroundColor: '#f7f8fa',

@@ -903,6 +903,20 @@ const handleSearchChange = useCallback(
     return `$${numericValue.toLocaleString()}`;
   };
 
+  const formatDateSafe = (value: unknown) => {
+    if (!value) {
+      return '--';
+    }
+
+    const parsedDate = new Date(String(value));
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '--';
+    }
+
+    return format(parsedDate, 'MMM, dd yyyy');
+  };
+
   const hasCellValue = (value: unknown) =>
   value !== null && value !== undefined && value !== '';
 
@@ -1015,48 +1029,35 @@ const handleSearchChange = useCallback(
           },
         },
       },
+      {
+        field: 'revision_changes',
+        headerName: 'Revision Changes',
+        width: 60,
+      },
+      {
+        field: 'line_items',
+        headerName: 'Line Items',
+        width: 60,
+        renderCell: (params) => params.value.length,
+      },
+      {
+        field: 'supplier_id',
+        headerName: 'Supplier Number',
+        width: 120,
+      },
       ...(user?.role !== 'SUPPLIER'
         ? [
             {
               field: 'supplier_name',
               headerName: 'Supplier',
-              width: 100,
+              width: 180,
             },
           ]
         : []),
-      {
-        field: 'status',
-        headerName: 'PO Status',
-        width: 130,
-        renderCell: (params) => (
-          <Chip
-            variant="outlined"
-            label={params.value.replace(/_/g, ' ')}
-            color={statusColors[params.value as PurchaseOrderStatus]}
-            size="small"
-          />
-        ),
-      },
-
-      ...(user?.role === 'SUPPLIER'
-        ? [
-            {
-              field: 'supplier_name',
-              headerName: 'Supplier',
-              width: 120,
-            },
-          ]
-        : []),
-
-      {
-        field: 'source_system',
-        headerName: 'ERP',
-        width: 80,
-      },
       {
         field: 'total_value',
         headerName: 'Total Value',
-        width: 120,
+        width: 110,
         renderCell: (params) => (
           <Typography height={'100%'} alignContent={'center'} fontSize={'0.8rem'}>
             {params.row.currency} {params.value.toLocaleString()}
@@ -1065,26 +1066,51 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'delivery_date',
-        headerName: 'Committed Date',
-        width: 130,
-        renderCell: (params) => format(new Date(params.value), 'MMM, dd yyyy'),
+        headerName: 'Need by Date',
+        width: 120,
+        renderCell: (params) => formatDateSafe(params.value),
       },
+
       {
-        field: 'line_items',
-        headerName: 'Line Items',
+        field: 'site',
+        headerName: 'Flowserve site',
         width: 70,
-        renderCell: (params) => params.value.length,
       },
+
       {
-        field: 'supplier_id',
-        headerName: 'Supplier Number',
-        width: 100,
+        field: 'status',
+        headerName: 'Status',
+        width: 140,
+        renderCell: (params) => (
+          <Chip
+            variant="outlined"
+            label={params.value ? String(params.value).replace(/_/g, ' ') : '--'}
+            color={statusColors[params.value as PurchaseOrderStatus] || 'warning'}
+            size="small"
+          />
+        ),
       },
+
       {
-        field: 'supplier_email',
-        headerName: 'Supplier Email',
-        width: 180,
+        field: 'source_system',
+        headerName: 'ERP',
+        width: '80',
       },
+
+      ...(user?.role === 'SUPPLIER'
+        ? [
+            {
+              field: 'supplier_name',
+              headerName: 'Supplier',
+              width: 150,
+            },
+          ]
+        : []),
+      // {
+      //   field: 'supplier_email',
+      //   headerName: 'Supplier Email',
+      //   width: 180,
+      // },
 
       // {
       //   field: 'mrp_exceptions',
@@ -1099,20 +1125,6 @@ const handleSearchChange = useCallback(
       //     />
       //   ),
       // },
-      {
-        field: 'revision_changes',
-        headerName: 'Revision Changes',
-        width: 70,
-      },
-      ...(user?.role !== 'SUPPLIER'
-        ? [
-            {
-              field: 'site',
-              headerName: 'Site',
-              width: 70,
-            },
-          ]
-        : []),
 
       ...(user?.role === 'SUPPLIER'
         ? [
@@ -1142,23 +1154,23 @@ const handleSearchChange = useCallback(
             },
           ]
         : []),
-      {
-        field: 'action',
-        headerName: 'Action',
-        width: 70,
-        sortable: false,
-        filterable: false,
-        renderCell: (params) => (
-          <IconButton
-            size="small"
-            onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
-          >
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
-        ),
-      },
+      // {
+      //   field: 'action',
+      //   headerName: 'Action',
+      //   width: 70,
+      //   sortable: false,
+      //   filterable: false,
+      //   renderCell: (params) => (
+      //     <IconButton
+      //       size="small"
+      //       onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
+      //     >
+      //       <MoreVertIcon fontSize="small" />
+      //     </IconButton>
+      //   ),
+      // },
     ],
-    [theme, pinnedPOIds, togglePin, statusColors, user?.role, openActionMenu]
+    [theme, pinnedPOIds, togglePin, statusColors, user?.role]
   );
 
   // console.log(columns.map((c) => c.field));
@@ -1168,7 +1180,7 @@ const handleSearchChange = useCallback(
       {
         field: 'pin',
         headerName: 'Pin',
-        width: 30,
+        width: 40,
         sortable: false,
         filterable: false,
         renderCell: (params) => {
@@ -1203,7 +1215,7 @@ const handleSearchChange = useCallback(
       {
         field: 'po_number',
         headerName: 'PO Number',
-        width: 100,
+        width: 115,
         renderCell: (params) => (
           <Typography
             fontWeight="bold"
@@ -1212,146 +1224,218 @@ const handleSearchChange = useCallback(
             fontSize="0.8rem"
             color={theme.palette.primary.light}
           >
-            {params.value}
+            {params.value || '--'}
           </Typography>
         ),
       },
       {
         field: 'line_number',
         headerName: 'PO Line',
-        width: 50,
+        width: 85,
+        renderCell: (params) => params.value || '--',
       },
       {
         field: 'schedule_line',
-        headerName: 'Sc...',
-        width: 50,
-        valueGetter: (_, row) => {
-          const revision = Number((row as Record<string, unknown>).po_line_revision_no ?? 0);
-          return Number.isNaN(revision) ? '--' : String(revision + 1);
+        headerName: 'Scedule line',
+        width: 55,
+        renderCell: (params) => {
+          const scheduleLine = params.row.schedule_line ?? params.row.po_line_revision_no ?? '--';
+
+          return scheduleLine;
         },
       },
       {
         field: 'material_code',
         headerName: 'Material No',
-        width: 110,
-      },
-      {
-        field: 'status',
-        headerName: 'Status',
-        width: 120,
-        renderCell: (params) => (
-          <Chip
-            variant="outlined"
-            label={params.value ? params.value.replace(/_/g, ' ') : '--'}
-            color={statusColors[params.value as PurchaseOrderStatus] || 'default'}
-            size="small"
-          />
-        ),
+        width: 105,
+        renderCell: (params) => params.value || '--',
       },
       {
         field: 'description',
         headerName: 'Short Description',
-        width: 150,
+        width: 135,
         renderCell: (params) => params.value || '--',
       },
       {
-        field: 'recommendation',
-        headerName: 'Recommendation',
-        width: 140,
+        field: 'unit',
+        headerName: 'UOM',
+        width: 55,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'quantity',
+        headerName: 'Qty',
+        width: 55,
+        renderCell: (params) => params.value ?? '--',
+      },
+      {
+        field: 'updated_quantity',
+        headerName: 'Supplier confirmed qty',
+        width: 65,
         renderCell: (params) =>
-          params.value ? (
-            <Typography fontWeight="bold" height="100%" alignContent="center" fontSize="0.75rem" color={theme.palette.primary.light}>
-              {String(params.value)}
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
             </Typography>
           ) : (
             '--'
           ),
       },
       {
-        field: 'unit',
-        headerName: 'UOM',
-        width: 50,
-        renderCell: (params) => params.value || '--',
-      },
-      {
-        field: 'quantity',
-        headerName: 'Qty',
-        width: 60,
-        renderCell: (params) => params.value ?? '--',
-      },
-      {
-        field: 'updated_quantity',
-        headerName: 'Supplier Confirmed Qty',
-        width: 120,
-        renderCell: (params) => params.value ?? '--',
-      },
-      {
         field: 'unit_price',
         headerName: 'Unit Price',
-        width: 70,
+        width: 90,
         renderCell: (params) => formatCurrency(params.value),
+      },
+      {
+        field: 'currency_code',
+        headerName: 'Currency',
+        width: 80,
+        renderCell: (params) => params.value || params.row.currency || '--',
       },
       {
         field: 'updated_unit_price',
-        headerName: 'Revised Unit Price',
-        width: 120,
-        renderCell: (params) => formatCurrency(params.value),
-        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
+        headerName: 'Update Unite price',
+        width: 105,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {formatCurrency(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
       },
       {
         field: 'net_value',
         headerName: 'Total Value',
-        width: 80,
+        width: 100,
         renderCell: (params) => formatCurrency(params.value),
       },
       {
         field: 'updated_net_value',
-        headerName: 'Revised Total Amount',
-        width: 130,
-        renderCell: (params) => formatCurrency(params.value),
-        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
+        headerName: 'Updated T...',
+        width: 105,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {formatCurrency(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
       },
       {
         field: 'required_in_house_date',
-        headerName: 'Need By Date',
-        width: 100,
-        renderCell: (params) => renderNeedByDateCell(params.value),
+        headerName: 'Need by Date',
+        width: 115,
+        renderCell: (params) => params.value || '--',
       },
       {
         field: 'updated_delivery_date',
         headerName: 'Revised Date',
-        width: 100,
-        renderCell: (params) => params.value || '--',
-        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
+        width: 110,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
+            </Typography>
+          ) : (
+            '--'
+          ),
       },
       {
         field: 'supplier_confirmation_date',
-        headerName: 'Supplier Confirmation Date',
-        width: 100,
-        renderCell: (params) => params.value || '--',
-        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
+        headerName: 'Supplier Confi...',
+        width: 130,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
+            </Typography>
+          ) : (
+            '--'
+          ),
       },
       {
         field: 'concession',
         headerName: 'Concession',
-        width: 100,
-        renderCell: (params) => params.value || '--',
-        cellClassName: (params) => (hasCellValue(params.value) ? 'changed-cell' : ''),
+        width: 105,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              height="100%"
+              alignContent="center"
+              fontSize="1rem"
+              color="success.main"
+              fontWeight={700}
+            >
+              ✓
+            </Typography>
+          ) : (
+            '--'
+          ),
       },
       {
         field: 'documents',
-        headerName: 'Documents',
-        width: 90,
+        headerName: 'Document',
+        width: 70,
+        sortable: false,
+        filterable: false,
         renderCell: (params) => {
           const docs = params.value as unknown;
           const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
-          return hasDocs ? <AttachFileIcon /> : '--';
+
+          return hasDocs ? <AttachFileIcon fontSize="small" color="action" /> : '--';
         },
+      },
+      {
+        field: 'status',
+        headerName: 'Status',
+        width: 140,
+        renderCell: (params) => (
+          <Chip
+            variant="outlined"
+            label={params.value ? String(params.value).replace(/_/g, ' ') : '--'}
+            color={statusColors[params.value as PurchaseOrderStatus] || 'warning'}
+            size="small"
+          />
+        ),
       },
       {
         field: 'action',
         headerName: 'Action',
-        width: 70,
+        width: 75,
         sortable: false,
         filterable: false,
         renderCell: (params) => (
@@ -1364,7 +1448,7 @@ const handleSearchChange = useCallback(
         ),
       },
     ],
-    [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors, renderNeedByDateCell, openActionMenu]
+    [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors, openActionMenu]
   );
 
   const supplierActionRequiredColumns: GridColDef[] = React.useMemo(
@@ -1612,238 +1696,259 @@ const handleSearchChange = useCallback(
   );
 
   //MRP exception coulumns
-  const mrpExceptionColumns: GridColDef[] = React.useMemo(
-    () => [
-      {
-        field: 'pin',
-        headerName: 'Pin',
-        width: 40,
-        sortable: false,
-        filterable: false,
-        renderCell: (params) => {
-          const lineItemRowId = params.row.id;
-          const isPinned = pinnedMRPLineItemIds.includes(lineItemRowId);
+ const mrpExceptionColumns: GridColDef[] = React.useMemo(
+   () => [
+     {
+       field: 'pin',
+       headerName: 'Pin',
+       width: 40,
+       sortable: false,
+       filterable: false,
+       renderCell: (params) => {
+         const lineItemRowId = params.row.id;
+         const isPinned = pinnedMRPLineItemIds.includes(lineItemRowId);
 
-          return (
-            <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleMRPLinePin(lineItemRowId);
-                }}
-                sx={{
-                  color: isPinned ? 'primary.main' : 'action.disabled',
-                  '&:hover': {
-                    bgcolor: 'action.hover',
-                  },
-                }}
-              >
-                {isPinned ? (
-                  <PushPinIcon sx={{ fontSize: '1.25rem' }} />
-                ) : (
-                  <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
-                )}
-              </IconButton>
-            </Tooltip>
-          );
-        },
-      },
-      {
-        field: 'po_number',
-        headerName: 'PO Number',
-        width: 100,
-        renderCell: (params) => (
-          <Typography
-            fontWeight="bold"
-            height="100%"
-            alignContent="center"
-            fontSize="0.8rem"
-            color={theme.palette.primary.light}
-          >
-            {params.value}
-          </Typography>
-        ),
-      },
-      {
-        field: 'line_number',
-        headerName: 'PO Line',
-        width: 50,
-      },
-      {
-        field: 'schedule_line',
-        headerName: 'Sc...',
-        width: 50,
-        valueGetter: (_, row) => {
-          const revision = Number((row as Record<string, unknown>).po_line_revision_no ?? 0);
-          return Number.isNaN(revision) ? '--' : String(revision + 1);
-        },
-      },
-      {
-        field: 'material_code',
-        headerName: 'Material No',
-        width: 100,
-        renderCell: (params) => params.value || '--',
-      },
-      {
-        field: 'description',
-        headerName: 'Short Description',
-        width: 150,
-        renderCell: (params) => params.value || '--',
-      },
-      {
-        field: 'supplier_name',
-        headerName: 'Supplier',
-        width: 90,
-        renderCell: (params) => params.value || '--',
-      },
-      {
-        field: 'status',
-        headerName: 'PO Status',
-        width: 120,
-        renderCell: (params) => (
-          <Chip
-            variant="outlined"
-            label={params.value ? params.value.replace(/_/g, ' ') : '--'}
-            color={statusColors[params.value as PurchaseOrderStatus] || 'default'}
-            size="small"
-          />
-        ),
-      },
-      {
-        field: 'source_system',
-        headerName: 'ERP',
-        width: 70,
-        renderCell: (params) => params.value || '--',
-      },
-      {
-        field: 'net_value',
-        headerName: 'Line Item Value',
-        width: 80,
-        renderCell: (params) => formatCurrency(params.value),
-      },
-      {
-        field: 'unit',
-        headerName: 'UOM',
-        width: 50,
-        renderCell: (params) => params.value || '--',
-      },
-      {
-        field: 'quantity',
-        headerName: 'Qty',
-        width: 50,
-        renderCell: (params) => params.value ?? '--',
-      },
-      {
-        field: 'updated_quantity',
-        headerName: 'Supplier Confirmed Qty',
-        width: 120,
-        renderCell: (params) =>
-          params.value !== null && params.value !== undefined ? (
-            <Typography
-              fontWeight="bold"
-              height="100%"
-              alignContent="center"
-              fontSize="0.8rem"
-              color={theme.palette.primary.light}
-            >
-              {params.value}
-            </Typography>
-          ) : (
-            '--'
-          ),
-      },
-      {
-        field: 'updated_unit_price',
-        headerName: 'Revised Unit Price',
-        width: 120,
-        renderCell: (params) =>
-          params.value ? (
-            <Typography fontWeight="bold" height="100%" alignContent="center" fontSize="0.8rem" color={theme.palette.primary.light}>
-              {formatCurrency(params.value)}
-            </Typography>
-          ) : (
-            '--'
-          ),
-      },
-      {
-        field: 'required_in_house_date',
-        headerName: 'Need By Date',
-        width: 100,
-        renderCell: (params) => renderNeedByDateCell(params.value),
-      },
-      {
-        field: 'updated_net_value',
-        headerName: 'Revised Total Amount',
-        width: 130,
-        renderCell: (params) =>
-          params.value ? (
-            <Typography fontWeight="bold" height="100%" alignContent="center" fontSize="0.8rem" color={theme.palette.primary.light}>
-              {formatCurrency(params.value)}
-            </Typography>
-          ) : (
-            '--'
-          ),
-      },
-      {
-        field: 'updated_delivery_date',
-        headerName: 'Revised Date',
-        width: 100,
-        renderCell: (params) =>
-          params.value ? (
-            <Typography
-              fontWeight="bold"
-              height="100%"
-              alignContent="center"
-              fontSize="0.8rem"
-              color={theme.palette.primary.light}
-            >
-              {params.value}
-            </Typography>
-          ) : (
-            '--'
-          ),
-      },
-      {
-        field: 'documents',
-        headerName: 'Documents',
-        width: 90,
-        renderCell: (params) => {
-          const docs = params.value as unknown;
-          const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
-          return hasDocs ? <AttachFileIcon /> : '--';
-        },
-      },
-      {
-        field: 'action',
-        headerName: 'Action',
-        width: 70,
-        sortable: false,
-        filterable: false,
-        renderCell: (params) => (
-          <IconButton
-            size="small"
-            onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
-          >
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
-        ),
-      },
-      // {
-      //   field: 'action',
-      //   headerName: 'Action',
-      //   width: 90,
-      //   sortable: false,
-      //   filterable: false,
-      //   renderCell: () => (
-      //     <Typography height="100%" alignContent="center" fontSize="0.8rem" color="text.secondary">
-      //       ⋮
-      //     </Typography>
-      //   ),
-      // },
-    ],
-    [theme, statusColors,pinnedMRPLineItemIds,toggleMRPLinePin, renderNeedByDateCell, openActionMenu]
-  );
+         return (
+           <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
+             <IconButton
+               size="small"
+               onClick={(e) => {
+                 e.stopPropagation();
+                 toggleMRPLinePin(lineItemRowId);
+               }}
+               sx={{
+                 color: isPinned ? 'primary.main' : 'action.disabled',
+                 '&:hover': {
+                   bgcolor: 'action.hover',
+                 },
+               }}
+             >
+               {isPinned ? (
+                 <PushPinIcon sx={{ fontSize: '1.25rem' }} />
+               ) : (
+                 <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
+               )}
+             </IconButton>
+           </Tooltip>
+         );
+       },
+     },
+     {
+       field: 'po_number',
+       headerName: 'PO Number',
+       width: 115,
+       renderCell: (params) => (
+         <Typography
+           fontWeight="bold"
+           height="100%"
+           alignContent="center"
+           fontSize="0.8rem"
+           color={theme.palette.primary.light}
+         >
+           {params.value || '--'}
+         </Typography>
+       ),
+     },
+     {
+       field: 'po_line_revision_no',
+       headerName: 'Rev.',
+       width: 60,
+       renderCell: (params) => {
+         const value = params.value ?? params.row.revision_changes ?? '--';
+         return value;
+       },
+     },
+     {
+       field: 'line_number',
+       headerName: 'Line Item...',
+       width: 95,
+       renderCell: (params) => params.value || '--',
+     },
+     {
+       field: 'description',
+       headerName: 'Short Description',
+       width: 150,
+       renderCell: (params) => params.value || '--',
+     },
+     {
+       field: 'supplier_name',
+       headerName: 'Supplier',
+       width: 170,
+       renderCell: (params) => params.value || '--',
+     },
+     {
+       field: 'recommendation',
+       headerName: 'Recommendations',
+       width: 150,
+       renderCell: (params) => {
+         const value =
+           params.row.recommendation || params.row.except_message || params.row.po_feedback || '--';
+
+         return value !== '--' ? (
+           <Typography
+             fontWeight="bold"
+             height="100%"
+             alignContent="center"
+             fontSize="0.8rem"
+             color={theme.palette.primary.light}
+           >
+             {String(value)}
+           </Typography>
+         ) : (
+           '--'
+         );
+       },
+     },
+     {
+       field: 'unit',
+       headerName: 'UO...',
+       width: 60,
+       renderCell: (params) => params.value || '--',
+     },
+     {
+       field: 'quantity',
+       headerName: 'Qty',
+       width: 55,
+       renderCell: (params) => params.value ?? '--',
+     },
+     {
+       field: 'updated_quantity',
+       headerName: 'Re...',
+       width: 60,
+       renderCell: (params) =>
+         hasCellValue(params.value) ? (
+           <Typography
+             fontWeight="bold"
+             height="100%"
+             alignContent="center"
+             fontSize="0.8rem"
+             color={theme.palette.primary.light}
+           >
+             {params.value}
+           </Typography>
+         ) : (
+           '--'
+         ),
+     },
+     {
+       field: 'unit_price',
+       headerName: 'Unit Price',
+       width: 95,
+       renderCell: (params) => formatCurrency(params.value),
+     },
+     {
+       field: 'net_value',
+       headerName: 'Total Value',
+       width: 105,
+       renderCell: (params) => formatCurrency(params.value),
+     },
+     {
+       field: 'updated_net_value',
+       headerName: 'Revised To...',
+       width: 115,
+       renderCell: (params) =>
+         hasCellValue(params.value) ? (
+           <Typography
+             fontWeight="bold"
+             height="100%"
+             alignContent="center"
+             fontSize="0.8rem"
+             color={theme.palette.primary.light}
+           >
+             {formatCurrency(params.value)}
+           </Typography>
+         ) : (
+           '--'
+         ),
+     },
+     {
+       field: 'required_in_house_date',
+       headerName: 'Need by Date',
+       width: 120,
+       renderCell: (params) => renderNeedByDateCell(params.value),
+     },
+     {
+       field: 'updated_delivery_date',
+       headerName: 'Revised Date',
+       width: 120,
+       renderCell: (params) =>
+         hasCellValue(params.value) ? (
+           <Typography
+             fontWeight="bold"
+             height="100%"
+             alignContent="center"
+             fontSize="0.8rem"
+             color={theme.palette.primary.light}
+           >
+             {params.value}
+           </Typography>
+         ) : (
+           '--'
+         ),
+     },
+     {
+       field: 'site',
+       headerName: 'Flowserve Sit...',
+       width: 130,
+       renderCell: (params) => params.value || '--',
+     },
+     {
+       field: 'status',
+       headerName: 'PO Status',
+       width: 130,
+       renderCell: (params) => (
+         <Chip
+           variant="outlined"
+           label={params.value ? String(params.value).replace(/_/g, ' ') : '--'}
+           color={statusColors[params.value as PurchaseOrderStatus] || 'warning'}
+           size="small"
+         />
+       ),
+     },
+     {
+       field: 'source_system',
+       headerName: 'ERP',
+       width: 95,
+       renderCell: (params) => params.value || '--',
+     },
+     {
+       field: 'documents',
+       headerName: 'Documents',
+       width: 70,
+       sortable: false,
+       filterable: false,
+       renderCell: (params) => {
+         const docs = params.value as unknown;
+         const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
+
+         return hasDocs ? <AttachFileIcon fontSize="small" color="action" /> : '--';
+       },
+     },
+     {
+       field: 'action',
+       headerName: 'Action',
+       width: 75,
+       sortable: false,
+       filterable: false,
+       renderCell: (params) => (
+         <IconButton
+           size="small"
+           onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
+         >
+           <MoreVertIcon fontSize="small" />
+         </IconButton>
+       ),
+     },
+   ],
+   [
+     theme,
+     statusColors,
+     pinnedMRPLineItemIds,
+     toggleMRPLinePin,
+     renderNeedByDateCell,
+     openActionMenu,
+   ]
+ );
 
   //saperate page view for supplier & PS
   const supplierColumns = React.useMemo(() => {

@@ -102,7 +102,11 @@ export const buildLineColumns = ({
                 '&:hover': { bgcolor: 'action.hover' },
               }}
             >
-              {isPinned ? <PushPin sx={{ fontSize: '1.1rem' }} /> : <PushPinOutlined sx={{ fontSize: '1.1rem' }} />}
+              {isPinned ? (
+                <PushPin sx={{ fontSize: '1.25rem' }} />
+              ) : (
+                <PushPinOutlined sx={{ fontSize: '1.25rem' }} />
+              )}
             </IconButton>
           </Tooltip>
         );
@@ -116,43 +120,63 @@ export const buildLineColumns = ({
     },
     { field: 'line_number', headerName: 'Schedule Line', width: 92 },
     { field: 'material_code', headerName: 'Material No', width: 108 },
-    {
-      field: 'line_status',
-      headerName: 'Status',
-      width: 60,
-      renderCell: (params: GridRenderCellParams) => (
-        <Chip
-          label={String(params.value || 'Pending')}
-          size="small"
-          variant="outlined"
-          color={String(params.value || '').toUpperCase().includes('HOLD') ? 'default' : 'warning'}
-          sx={{ borderRadius: 4 }}
-        />
-      ),
-    },
     { field: 'description', headerName: 'Short Description', flex: 1, width: 200 },
-    { field: 'quantity', headerName: 'Qty', width: 64, type: 'number', align: 'center', headerAlign: 'center' },
-    { field: 'updated_quantity', headerName: 'Updated Qty', width: 96, type: 'number', align: 'center', headerAlign: 'center' },
-    { field: 'unit', headerName: 'UOM', width: 58, align: 'center', headerAlign: 'center' },
-    { field: 'unit_price', headerName: 'Unit Price', width: 86, type: 'number', align: 'right', headerAlign: 'right' },
+    {
+      field: 'quantity',
+      headerName: 'Qty',
+      width: 64,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'supplier_confirmed_quantity',
+      headerName: 'Supplier Confirmed Qty',
+      width: 96,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => params.value || '--',
+    },
+    { field: 'unit', headerName: 'UOM', width: 58, align: 'center', headerAlign: 'center',renderCell: (params) => params.value || '--', },
+    {
+      field: 'unit_price',
+      headerName: 'Unit Price',
+      width: 86,
+      type: 'number',
+      align: 'right',
+      headerAlign: 'right',
+    },
+    {
+      field: 'currency_code',
+      headerName: 'Currency',
+      width: 80,
+    },
     {
       field: 'updated_unit_price',
       headerName: 'Updated Unit Price',
       width: 80,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" color="primary.main">
-          {params.value ?? '-'}
+          {params.value ?? '--'}
         </Typography>
       ),
     },
-    { field: 'net_value', headerName: 'Total Value', width: 96, type: 'number', align: 'right', headerAlign: 'right' },
+    {
+      field: 'net_value',
+      headerName: 'Total Value',
+      width: 96,
+      type: 'number',
+      align: 'right',
+      headerAlign: 'right',
+    },
     {
       field: 'updated_net_value',
       headerName: 'Updated Total Value',
       width: 60,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" color="primary.main">
-          {params.value ?? '-'}
+          {params.value ?? '--'}
         </Typography>
       ),
     },
@@ -165,7 +189,9 @@ export const buildLineColumns = ({
         const curr = Number(row.net_value || 0);
         const updated = Number(row.updated_net_value || row.net_value || 0);
         const diff = updated - curr;
-        return <Typography variant="body2">{Number.isFinite(diff) ? diff.toFixed(2) : '-'}</Typography>;
+        return (
+          <Typography variant="body2">{Number.isFinite(diff) ? diff.toFixed(2) : '-'}</Typography>
+        );
       },
     },
     {
@@ -174,34 +200,12 @@ export const buildLineColumns = ({
       width: 100,
       renderCell: renderNeedByCell,
     },
-    { field: 'updated_delivery_date', headerName: 'Revised Date', width: 100 },
+    { field: 'updated_delivery_date', headerName: 'Revised Date', width: 100,renderCell: (params) => params.value || '--', },
     {
       field: 'supplier_confirmation_date',
       headerName: 'Supplier Confirmation Date',
-      width: 170,
-      renderCell: (params: GridRenderCellParams<LineItem>) => {
-        if (params.value) {
-          return <Typography variant="body2">{String(params.value)}</Typography>;
-        }
-
-        return (
-          <Typography
-            component="span"
-            variant="body2"
-            color="primary.main"
-            sx={{ textDecoration: 'underline', cursor: onSupplierConfirmationClick ? 'pointer' : 'default' }}
-            onClick={(event) => {
-              if (!onSupplierConfirmationClick) {
-                return;
-              }
-              event.stopPropagation();
-              onSupplierConfirmationClick(params.row);
-            }}
-          >
-            View
-          </Typography>
-        );
-      },
+      width: 140,
+      renderCell: (params) => params.value || '--',
     },
     {
       field: 'concession',
@@ -210,10 +214,13 @@ export const buildLineColumns = ({
       renderCell: (params: GridRenderCellParams<LineItem>) => (
         <Typography
           variant="body2"
-          color={onConcessionClick && (params.row as any).concession ? 'primary.main' : 'text.primary'}
+          color={
+            onConcessionClick && (params.row as any).concession ? 'primary.main' : 'text.primary'
+          }
           sx={{
             cursor: onConcessionClick && (params.row as any).concession ? 'pointer' : 'default',
-            textDecoration: onConcessionClick && (params.row as any).concession ? 'underline' : 'none',
+            textDecoration:
+              onConcessionClick && (params.row as any).concession ? 'underline' : 'none',
           }}
           onClick={(event) => {
             if (!onConcessionClick || !(params.row as any).concession) {
@@ -223,7 +230,7 @@ export const buildLineColumns = ({
             onConcessionClick(params.row);
           }}
         >
-          {(params.row as any).concession || '-'}
+          {(params.row as any).concession || '--'}
         </Typography>
       ),
     },
@@ -251,12 +258,36 @@ export const buildLineColumns = ({
                 handleDocumentsClick(event as unknown as React.MouseEvent<HTMLElement>);
               }
             }}
-            sx={{ display: 'inline-flex', alignItems: 'center', cursor: onDocumentsClick ? 'pointer' : 'default' }}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              cursor: onDocumentsClick ? 'pointer' : 'default',
+            }}
           >
             {hasDocs ? <AttachFileIcon /> : '--'}
           </Box>
         );
       },
+    },
+    {
+      field: 'line_status',
+      headerName: 'Status',
+      width: 80,
+      renderCell: (params: GridRenderCellParams) => (
+        <Chip
+          label={String(params.value || 'Pending')}
+          size="small"
+          variant="outlined"
+          color={
+            String(params.value || '')
+              .toUpperCase()
+              .includes('HOLD')
+              ? 'default'
+              : 'warning'
+          }
+          sx={{ borderRadius: 4 }}
+        />
+      ),
     },
     {
       field: 'actions',
@@ -268,7 +299,9 @@ export const buildLineColumns = ({
         <IconButton
           size="small"
           onClick={(e) => openMenu(e, params.row)}
-          disabled={String(params.row.line_status || '').toUpperCase().includes('HOLD')}
+          disabled={String(params.row.line_status || '')
+            .toUpperCase()
+            .includes('HOLD')}
         >
           <MoreVert fontSize="small" />
         </IconButton>
