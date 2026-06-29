@@ -25,7 +25,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import { DataGrid, GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRowSelectionModel, GridSortModel} from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ViewListIcon from '@mui/icons-material/ViewList';
@@ -2252,8 +2252,22 @@ const handleSearchChange = useCallback(
       appliedFilters,
       advanceFilters,
       setPage,
+      moduleTabs,
     ]
   );
+
+  const dataGridSortModel = React.useMemo<GridSortModel>(() => {
+    if (!sortModel.sort_by || !sortModel.sort_order) {
+      return [];
+    }
+
+    return [
+      {
+        field: sortModel.sort_by,
+        sort: sortModel.sort_order,
+      },
+    ];
+  }, [sortModel.sort_by, sortModel.sort_order]);
   
   //saperate page view for supplier & PS
   // const supplierColumns = React.useMemo(
@@ -2408,7 +2422,7 @@ const handleSearchChange = useCallback(
           }
           rowHeight={35}
           pagination
-          paginationMode={isLineItemTab && currentPinFilter === 'pinned' ? 'client' : 'server'}
+          paginationMode="server"
           pageSizeOptions={[10, 25, 50, 60, 100]}
           loading={loading}
           onPaginationModelChange={handlePaginationModelChange}
@@ -2418,17 +2432,26 @@ const handleSearchChange = useCallback(
           rowSelectionModel={selectedRowIds}
           onRowSelectionModelChange={(model) => setSelectedRowIds(model)}
           disableRowSelectionOnClick={!isLineItemTab}
-          sortingMode={currentPinFilter === 'pinned' ? 'client' : 'server'}
+          sortingMode="server"
+          sortingOrder={['asc', 'desc', null]}
+          sortModel={dataGridSortModel}
           onSortModelChange={(model) => {
-            console.log('sort model: ', model);
+            const nextSort = model[0];
 
-            if (currentPinFilter === 'pinned') {
+            // Third click/default clear case
+            if (!nextSort?.field || !nextSort.sort) {
+              setSortModel({
+                sort_by: undefined,
+                sort_order: 'asc',
+              });
+
+              setPage(0);
               return;
             }
 
             setSortModel({
-              sort_by: model[0]?.field,
-              sort_order: (model[0]?.sort as 'asc' | 'desc') || 'asc',
+              sort_by: nextSort.field,
+              sort_order: nextSort.sort as 'asc' | 'desc',
             });
 
             setPage(0);
@@ -2437,12 +2460,11 @@ const handleSearchChange = useCallback(
             handleGridRowClick(params.row);
           }}
           localeText={{
-            noRowsLabel:
-              isLineItemTab
-                ? 'No matching line items found'
-                : selectedSites.length === 0
-                  ? 'No sites selected'
-                  : 'No purchase orders found',
+            noRowsLabel: isLineItemTab
+              ? 'No matching line items found'
+              : selectedSites.length === 0
+                ? 'No sites selected'
+                : 'No purchase orders found',
           }}
           sx={{
             borderRadius: 0,
@@ -2690,7 +2712,9 @@ const handleSearchChange = useCallback(
       <Menu anchorEl={actionAnchorEl} open={Boolean(actionAnchorEl)} onClose={closeActionMenu}>
         {getCurrentTabActions().map((action) => (
           <ActionMenuItem key={action} onClick={() => openDialogForAction(action)}>
-            <ListItemIcon sx={{ minWidth: 28 }}>{ACTION_ICONS[action] || <InfoOutlinedIcon fontSize="small" />}</ListItemIcon>
+            <ListItemIcon sx={{ minWidth: 28 }}>
+              {ACTION_ICONS[action] || <InfoOutlinedIcon fontSize="small" />}
+            </ListItemIcon>
             <ListItemText
               primary={ACTION_LABELS[action] || action}
               primaryTypographyProps={{ fontSize: 12 }}
@@ -2699,7 +2723,12 @@ const handleSearchChange = useCallback(
         ))}
       </Menu>
 
-      <Dialog open={bulkAcceptOpen} onClose={() => setBulkAcceptOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={bulkAcceptOpen}
+        onClose={() => setBulkAcceptOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Accept Selected Lines</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
@@ -2715,7 +2744,11 @@ const handleSearchChange = useCallback(
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBulkAcceptOpen(false)} disabled={bulkAcceptLoading} sx={{ borderRadius: 0.75 }}>
+          <Button
+            onClick={() => setBulkAcceptOpen(false)}
+            disabled={bulkAcceptLoading}
+            sx={{ borderRadius: 0.75 }}
+          >
             Cancel
           </Button>
           <Button
