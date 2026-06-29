@@ -155,7 +155,7 @@ const POFilters: React.FC<POFiltersProps> = ({
         mb: 0,
         width: '100%',
         border: '1.5px solid #CFCFCF',
-        borderRadius: '8px 8px 0 0',
+        borderRadius: '0',
         boxShadow: 'none',
       }}
     >
