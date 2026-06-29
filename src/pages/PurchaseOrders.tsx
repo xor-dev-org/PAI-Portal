@@ -1366,6 +1366,250 @@ const handleSearchChange = useCallback(
     [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors, renderNeedByDateCell, openActionMenu]
   );
 
+  const supplierActionRequiredColumns: GridColDef[] = React.useMemo(
+    () => [
+      {
+        field: 'pin',
+        headerName: 'Pin',
+        width: 40,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const lineItemRowId = params.row.id;
+          const isPinned = pinnedPOToReviewLineItemIds.includes(lineItemRowId);
+
+          return (
+            <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePOToReviewLinePin(lineItemRowId);
+                }}
+                sx={{
+                  color: isPinned ? 'primary.main' : 'action.disabled',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                {isPinned ? (
+                  <PushPinIcon sx={{ fontSize: '1.25rem' }} />
+                ) : (
+                  <PushPinOutlinedIcon sx={{ fontSize: '1.25rem' }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          );
+        },
+      },
+      {
+        field: 'po_number',
+        headerName: 'PO Number',
+        width: 105,
+        renderCell: (params) => (
+          <Typography
+            fontWeight="bold"
+            height="100%"
+            alignContent="center"
+            fontSize="0.8rem"
+            color={theme.palette.primary.light}
+          >
+            {params.value || '--'}
+          </Typography>
+        ),
+      },
+      {
+        field: 'line_number',
+        headerName: 'PO Line',
+        width: 80,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'schedule_line',
+        headerName: 'Sc...',
+        width: 55,
+        renderCell: (params) => {
+          const scheduleLine =
+            params.row.schedule_line ?? params.row.po_line_revision_no ?? params.row.line_number;
+
+          return scheduleLine ?? '--';
+        },
+      },
+      {
+        field: 'material_code',
+        headerName: 'Material No',
+        width: 105,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'description',
+        headerName: 'Short Desc...',
+        width: 140,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'unit',
+        headerName: 'UOM',
+        width: 65,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'quantity',
+        headerName: 'Qty',
+        width: 65,
+        renderCell: (params) => params.value ?? '--',
+      },
+      {
+        field: 'updated_quantity',
+        headerName: 'Supplier Confirm...',
+        width: 125,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'unit_price',
+        headerName: 'Unit Price',
+        width: 105,
+        renderCell: (params) => formatCurrency(params.value),
+      },
+      {
+        field: 'updated_unit_price',
+        headerName: 'Revised Unit Price',
+        width: 135,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {formatCurrency(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'net_value',
+        headerName: 'Total Value',
+        width: 110,
+        renderCell: (params) => formatCurrency(params.value),
+      },
+      {
+        field: 'updated_net_value',
+        headerName: 'Revised TotalAmount',
+        width: 145,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {formatCurrency(params.value)}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'required_in_house_date',
+        headerName: 'Need by Date',
+        width: 120,
+        renderCell: (params) => params.value || '--',
+      },
+      {
+        field: 'updated_delivery_date',
+        headerName: 'Revised Date',
+        width: 120,
+        renderCell: (params) =>
+          hasCellValue(params.value) ? (
+            <Typography
+              fontWeight="bold"
+              height="100%"
+              alignContent="center"
+              fontSize="0.8rem"
+              color={theme.palette.primary.light}
+            >
+              {params.value}
+            </Typography>
+          ) : (
+            '--'
+          ),
+      },
+      {
+        field: 'status',
+        headerName: 'Status',
+        width: 130,
+        renderCell: (params) => (
+          <Chip
+            variant="outlined"
+            label={params.value ? String(params.value).replace(/_/g, ' ') : '--'}
+            color={statusColors[params.value as PurchaseOrderStatus] || 'warning'}
+            size="small"
+          />
+        ),
+      },
+      {
+        field: 'action',
+        headerName: 'Action',
+        width: 70,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <IconButton
+            size="small"
+            onClick={(event) => openActionMenu(event, params.row as LineItemTabRow)}
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        ),
+      },
+    ],
+    [pinnedPOToReviewLineItemIds, togglePOToReviewLinePin, theme, statusColors, openActionMenu]
+  );
+
+  const supplierExceptionsAlertsColumns: GridColDef[] = React.useMemo(
+    () =>
+      supplierActionRequiredColumns.map((column) => {
+        if (column.field === 'required_in_house_date') {
+          return {
+            ...column,
+            headerName: 'Need by Date',
+            renderCell: (params: any) => renderNeedByDateCell(params.value),
+          };
+        }
+
+        if (column.field === 'updated_delivery_date') {
+          return {
+            ...column,
+            headerName: 'Revised Date',
+            renderCell: (params: any) => renderNeedByDateCell(params.value),
+          };
+        }
+
+        return column;
+      }),
+    [supplierActionRequiredColumns, renderNeedByDateCell]
+  );
+
   //MRP exception coulumns
   const mrpExceptionColumns: GridColDef[] = React.useMemo(
     () => [
@@ -1645,17 +1889,40 @@ const handleSearchChange = useCallback(
   );
 
   const currentColumns = React.useMemo(() => {
+    if (isSupplierCollaboration) {
+      switch (selectedTab) {
+        case 2: // ACTION REQUIRED
+          return supplierActionRequiredColumns;
+
+        case 3: // EXCEPTIONS & ALERTS
+          return supplierExceptionsAlertsColumns;
+        // temporary, we'll replace in next step
+
+        default:
+          return gridColumns;
+      }
+    }
+
     switch (selectedTab) {
       case 2: // PO TO REVIEW
         return poToReviewColumns;
 
       case 3: // MRP EXCEPTION
-        return isSupplierCollaboration ? poToReviewColumns : mrpExceptionColumns;
+        return mrpExceptionColumns;
 
       default:
         return gridColumns;
     }
-  }, [selectedTab, isSupplierCollaboration, poToReviewColumns, mrpExceptionColumns, gridColumns]);
+  }, [
+    isSupplierCollaboration,
+    selectedTab,
+    supplierActionRequiredColumns,
+    supplierExceptionsAlertsColumns,
+    poToReviewColumns,
+    mrpExceptionColumns,
+    gridColumns,
+
+  ]);
 
   const displayedRows = React.useMemo(() => {
     const rows = pinFilter === 'pinned' ? pinnedPOs : purchaseOrders;
@@ -1684,6 +1951,12 @@ const handleSearchChange = useCallback(
       }
 
       case 3: {
+        if (isSupplierCollaboration) {
+          return currentPinFilter === 'pinned'
+            ? lineItemRows.filter((row) => pinnedPOToReviewLineItemIds.includes(row.id))
+            : lineItemRows;
+        }
+
         return currentPinFilter === 'pinned'
           ? lineItemRows.filter((row) => pinnedMRPLineItemIds.includes(row.id))
           : lineItemRows;
@@ -1703,21 +1976,32 @@ const handleSearchChange = useCallback(
 
   const currentPinnedCount = React.useMemo(() => {
     switch (selectedTab) {
-      case 2: // PO TO REVIEW
-        return pinnedPOToReviewLineItemIds.length;
+      case 2: {
+        // PO TO REVIEW / Supplier ACTION REQUIRED
+        return lineItemRows.filter((row) => pinnedPOToReviewLineItemIds.includes(row.id)).length;
+      }
 
-      case 3: // MRP EXCEPTION
-        return pinnedMRPLineItemIds.length;
+      case 3: {
+        // Supplier EXCEPTIONS & ALERTS currently uses same supplier pin bucket
+        if (isSupplierCollaboration) {
+          return lineItemRows.filter((row) => pinnedPOToReviewLineItemIds.includes(row.id)).length;
+        }
 
-      case 0: // OPEN PO / normal PO list
+        // PS MRP EXCEPTION
+        return lineItemRows.filter((row) => pinnedMRPLineItemIds.includes(row.id)).length;
+      }
+
+      case 0:
       default:
         return pinnedPOIds.length;
     }
   }, [
     selectedTab,
+    isSupplierCollaboration,
+    lineItemRows,
     pinnedPOIds.length,
-    pinnedPOToReviewLineItemIds.length,
-    pinnedMRPLineItemIds.length,
+    pinnedPOToReviewLineItemIds,
+    pinnedMRPLineItemIds,
   ]);
 
   const handleSelectedSitesChange = useCallback(
