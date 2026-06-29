@@ -27,6 +27,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ViewListIcon from '@mui/icons-material/ViewList';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
@@ -1344,7 +1345,7 @@ const handleSearchChange = useCallback(
         renderCell: (params) => {
           const docs = params.value as unknown;
           const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
-          return hasDocs ? '📎' : '--';
+          return hasDocs ? <AttachFileIcon /> : '--';
         },
       },
       {
@@ -1566,7 +1567,7 @@ const handleSearchChange = useCallback(
         renderCell: (params) => {
           const docs = params.value as unknown;
           const hasDocs = Array.isArray(docs) ? docs.length > 0 : Boolean(docs);
-          return hasDocs ? '📎' : '--';
+          return hasDocs ? <AttachFileIcon /> : '--';
         },
       },
       {

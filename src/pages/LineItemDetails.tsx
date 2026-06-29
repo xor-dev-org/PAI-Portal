@@ -6,18 +6,11 @@ import {
   Chip,
   CircularProgress,
   Grid,
-  IconButton,
   Paper,
   Stack,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import LanguageIcon from '@mui/icons-material/Language';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import IosShareIcon from '@mui/icons-material/IosShare';
-import AltRouteIcon from '@mui/icons-material/AltRoute';
-import CheckIcon from '@mui/icons-material/Check';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import { LineItem, PurchaseOrder } from '@/models';
@@ -197,13 +190,13 @@ const LineItemDetails: React.FC = () => {
       </Stack>
 
       <Paper variant="outlined" sx={{ borderRadius: 1, borderColor: '#d9dde5' }}>
-        <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={0} sx={{ px: 0.5, py: 0.25, borderBottom: '1px solid #e5e7eb' }}>
+        {/* <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={0} sx={{ px: 0.5, py: 0.25, borderBottom: '1px solid #e5e7eb' }}>
           <Tooltip title="Refresh"><IconButton size="small"><RefreshIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
           <Tooltip title="Move Up"><IconButton size="small"><ArrowUpwardIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
           <Tooltip title="Share"><IconButton size="small"><IosShareIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
           <Tooltip title="Route"><IconButton size="small"><AltRouteIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
           <Tooltip title="Confirm"><IconButton size="small"><CheckIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-        </Stack>
+        </Stack> */}
 
         <Stack spacing={1.25} sx={{ p: 1.25 }}>
           <SectionCard title="Line Item Specification">

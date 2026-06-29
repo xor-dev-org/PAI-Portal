@@ -129,6 +129,12 @@ const PurchaseOrderDetails: React.FC = () => {
     setDocumentsRows(rows || []);
   }, [id]);
 
+  const refreshPageAfterDialogAction = useCallback(async () => {
+    if (!id) return;
+    await Promise.all([reloadPo(), reloadHistory(), reloadDocuments()]);
+    window.location.reload();
+  }, [id, reloadPo, reloadHistory, reloadDocuments]);
+
   const reloadDocumentTags = useCallback(async () => {
     const tags = await purchaseOrderService.getPODocumentTags();
     const normalizedTags = tags.length > 0 ? tags : ['LINE_ITEM'];
@@ -382,7 +388,6 @@ const PurchaseOrderDetails: React.FC = () => {
     };
 
     await purchaseOrderService.performPOAction(id, req as any);
-    await Promise.all([reloadPo(), reloadHistory()]);
   };
 
   const submitMove = async (kind: 'MOVE_IN' | 'MOVE_OUT') => {
@@ -392,6 +397,7 @@ const PurchaseOrderDetails: React.FC = () => {
       if (kind === 'MOVE_IN') payload.move_in_date = dialogDate;
       if (kind === 'MOVE_OUT') payload.move_out_date = dialogDate;
       await executeAction(kind, payload);
+      await refreshPageAfterDialogAction();
       closeDialog();
     } catch (err: any) {
       setError(err?.response?.data?.detail || `Failed to submit ${kind}`);
@@ -405,6 +411,7 @@ const PurchaseOrderDetails: React.FC = () => {
         .filter((r) => r.quantity && r.delivery_date)
         .map((r) => ({ quantity: Number(r.quantity), delivery_date: r.delivery_date }));
       await executeAction('SPLIT', { notes: dialogNote, splits });
+      await refreshPageAfterDialogAction();
       closeDialog();
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to submit split request');
@@ -450,6 +457,7 @@ const PurchaseOrderDetails: React.FC = () => {
         payload.document_id = payload.document_id || concessionDocumentId || undefined;
       }
       await executeAction(action, payload, selectedIds);
+      await refreshPageAfterDialogAction();
       closeDialog();
     } catch (err: any) {
       setError(err?.response?.data?.detail || `Failed to submit ${action}`);
@@ -471,6 +479,7 @@ const PurchaseOrderDetails: React.FC = () => {
             ? [formatLineId(selectedLine)]
             : [];
       await executeAction(action, { notes: dialogNote, document_id: concessionDocumentId || undefined }, selectedIds);
+      await refreshPageAfterDialogAction();
       closeDialog();
     } catch (err: any) {
       setError(err?.response?.data?.detail || `Failed to submit ${action}`);
@@ -482,7 +491,7 @@ const PurchaseOrderDetails: React.FC = () => {
     try {
       setError(null);
       await purchaseOrderService.performPODocumentAction(id, selectedDocument.id, { action, notes: dialogNote });
-      await reloadDocuments();
+      await refreshPageAfterDialogAction();
       closeDialog();
     } catch (err: any) {
       setError(err?.response?.data?.detail || `Failed to submit document ${action}`);
@@ -520,7 +529,7 @@ const PurchaseOrderDetails: React.FC = () => {
           )
         );
       }
-      await reloadDocuments();
+      await refreshPageAfterDialogAction();
       closeDialog();
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to save document');
@@ -625,6 +634,11 @@ const PurchaseOrderDetails: React.FC = () => {
         onConcessionClick: isCockpitContext
           ? (line) => navigate(`/purchase-orders/${id}/line-items/${formatLineId(line)}?module=${moduleContext}`)
           : undefined,
+        onDocumentsClick: (line) => {
+          setSelectedLine(line);
+          setSelectedLineIds([formatLineId(line)]);
+          setActiveTab(3);
+        },
       }),
     [pinnedLineIds, toggleLinePin, supplier, isSupplierCollaborationContext, isCockpitContext, navigate, id, moduleContext]
   );
