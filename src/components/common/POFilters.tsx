@@ -126,7 +126,16 @@ const POFilters: React.FC<POFiltersProps> = ({
     setSiteSearch('');
   };
   const [localSearchInput, setLocalSearchInput] = useState(searchInput);
+
   useEffect(() => {
+    setLocalSearchInput(searchInput);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (localSearchInput === searchInput) {
+      return;
+    }
+
     const handler = setTimeout(() => {
       onSearchChange(localSearchInput);
     }, 1000);
@@ -134,7 +143,7 @@ const POFilters: React.FC<POFiltersProps> = ({
     return () => {
       clearTimeout(handler);
     };
-  }, [localSearchInput, onSearchChange]);
+  }, [localSearchInput, searchInput, onSearchChange]);
 
   // It stays expanded if focused OR if there is text typed inside it
   const isExpanded = isFocused || localSearchInput.length > 0;

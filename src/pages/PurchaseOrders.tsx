@@ -22,14 +22,26 @@ import {
   Tooltip,
   Menu,
   MenuItem as ActionMenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import BackHandIcon from '@mui/icons-material/BackHand';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import CallSplitIcon from '@mui/icons-material/CallSplit';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import SyncIcon from '@mui/icons-material/Sync';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
 import {
   PurchaseOrder,
@@ -106,6 +118,19 @@ const ACTION_LABELS: Record<string, string> = {
   UPLOAD_DOCUMENT: 'Upload Document',
 };
 
+const ACTION_ICONS: Record<string, React.ReactNode> = {
+  MOVE_IN: <BackHandIcon fontSize="small" />,
+  MOVE_OUT: <SwapHorizIcon fontSize="small" />,
+  SPLIT: <CallSplitIcon fontSize="small" />,
+  HOLD: <WarningAmberIcon fontSize="small" />,
+  REJECT: <CancelOutlinedIcon fontSize="small" />,
+  ACCEPT: <CheckCircleOutlineIcon fontSize="small" />,
+  NEED_MORE_INFORMATION: <InfoOutlinedIcon fontSize="small" />,
+  RAISE_CONCESSION: <TrendingUpIcon fontSize="small" />,
+  UPLOAD_DOCUMENT: <UploadFileIcon fontSize="small" />,
+  PROPOSE_CHANGE: <SyncIcon fontSize="small" />,
+};
+
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'default' }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -119,7 +144,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
 
     return MODULE_TABS[moduleVariant];
   }, [moduleVariant, isDefaultSupplierView]);
-  const defaultTab = moduleTabs[0]?.value ?? 0;
+  const defaultTab = moduleTabs[2]?.value ?? 2;
   const isSupplierCollaboration = isSupplierCollaborationMode;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -150,6 +175,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
   const [uploadComments, setUploadComments] = useState('');
   const [documentTags, setDocumentTags] = useState<string[]>(['LINE_ITEM']);
   const [selectedDocumentTag, setSelectedDocumentTag] = useState('LINE_ITEM');
+  const [selectedRowIds, setSelectedRowIds] = useState<GridRowSelectionModel>([]);
+  const [bulkAcceptOpen, setBulkAcceptOpen] = useState(false);
+  const [bulkAcceptNote, setBulkAcceptNote] = useState('');
+  const [bulkAcceptLoading, setBulkAcceptLoading] = useState(false);
 
   const { page, pageSize, setPage, setPageSize } = usePagination(0, 60);
   const [rowCount, setRowCount] = useState(0);
@@ -320,10 +349,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
       setLoading(true);
       setError(null);
 
-      console.log('Fetching purchase orders with sort model:', sortModel);
-      console.log('-----------pinnedOrNot:', pinFilter);
-      // console.log('pinnedList:', pinnedPOIds);
-
       if (user?.id) {
         const pinnedPOResult = await userService.getPinnedRows(user.id, 'po');
         const pinnedPOToReviewResult = await userService.getPinnedRows(user.id, 'po_to_review');
@@ -341,16 +366,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
 
       if (isLineTabRequest) {
         const lineItemFilters: POFiltersType = {
+          page: page + 1,
+          page_size: pageSize,
           search: searchInput,
           sort_by: sortModel.sort_by,
           sort_order: sortModel.sort_order,
           include_line_items_only: true,
         };
-        
-        if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
-          lineItemFilters.site = selectedSites.join(',');
-        }
-
 
         if (!isSupplierCollaboration) {
           lineItemFilters.tab_mode = selectedTab === 2 ? 'ready_to_review' : 'mrp_exception';
@@ -359,54 +381,21 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
         } else if (selectedTab === 2) {
           lineItemFilters.tab_mode = 'action_required' as any;
         }
-        
+
         if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
           lineItemFilters.site = selectedSites.join(',');
         }
-
 
         if (user?.role === 'SUPPLIER') {
           lineItemFilters.supplier_id = String(user.supplier_msid ?? user.id);
         }
 
         const lineResponse = await purchaseOrderService.getPOList(lineItemFilters);
-
-        let moduleRows = lineResponse.data as unknown as LineItemTabRow[];
-
-        if (isSupplierCollaboration) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const in30Days = new Date(today);
-          in30Days.setDate(today.getDate() + 30);
-
-          if (selectedTab === 3) {
-            moduleRows = moduleRows.filter((row) => {
-              const needByRaw = String(row.required_in_house_date || row.delivery_date || '');
-              if (!needByRaw) {
-                return false;
-              }
-
-              const needByDate = new Date(needByRaw);
-              if (Number.isNaN(needByDate.getTime())) {
-                return false;
-              }
-
-              needByDate.setHours(0, 0, 0, 0);
-              return needByDate < today || needByDate <= in30Days;
-            });
-          }
-
-          if (selectedTab === 2) {
-            moduleRows = moduleRows.filter((row) => {
-              const ackStatus = String(row.po_line_ack_status || row.line_status || '').toUpperCase();
-              return ackStatus.includes('PENDING') || ackStatus.includes('UNACK') || ackStatus.includes('NEED');
-            });
-          }
-        }
+        const moduleRows = lineResponse.data as unknown as LineItemTabRow[];
 
         setLineItemRows(moduleRows);
         setPurchaseOrders([]);
-        setRowCount(moduleRows.length);
+        setRowCount(lineResponse.total);
 
         const resolvedTabName = isSupplierCollaboration
           ? selectedTab === 3
@@ -434,17 +423,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
         search: searchInput,
         ...advanceFilters,
       };
-      
+
       if (selectedSites.length > 0 && selectedSites.length < availableSites.length) {
         filters.site = selectedSites.join(',');
       }
 
-
       if (user?.role === 'SUPPLIER') {
         filters.supplier_id = String(user.supplier_msid ?? user.id);
       }
-
-      console.log('Final filters:', filters);
 
       logger.info('Fetching purchase orders', {
         page: filters.page,
@@ -454,10 +440,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
         advanceFilters: Object.keys(advanceFilters).length,
       });
 
-      //console.log("Filters Sent:", filters);
-      console.log('Selected Sites Sent:', selectedSites);
       const response = await purchaseOrderService.getPOList(filters);
-      console.log('po resp: ', response);
       setPurchaseOrders(response.data);
       setLineItemRows([]);
       setRowCount(response.total);
@@ -468,7 +451,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
       });
     } catch (err) {
       const error = err as { response?: { data?: { detail?: string } } };
-      console.error('Error fetching purchase orders:', error);
       setError(error.response?.data?.detail || 'Failed to load purchase orders');
       logger.error('Failed to fetch purchase orders', {
         durationMs: Math.round(performance.now() - startTime),
@@ -486,9 +468,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
     searchInput,
     user,
     advanceFilters,
-    pinFilter,
     selectedSites,
     sitesLoaded,
+    isSupplierCollaboration,
+    availableSites.length,
   ]);
 
   useEffect(() => {
@@ -672,6 +655,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
   const submitMoveAction = useCallback(async (action: 'MOVE_IN' | 'MOVE_OUT') => {
     try {
       setError(null);
+      if (!dialogDate) {
+        setError(`${ACTION_LABELS[action]} date is required`);
+        return;
+      }
       const payload = action === 'MOVE_IN' ? { notes: dialogNote, move_in_date: dialogDate } : { notes: dialogNote, move_out_date: dialogDate };
       await executeRowAction(action, payload);
     } catch (err: any) {
@@ -685,6 +672,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
       const splits = splitRows
         .filter((row) => row.quantity && row.delivery_date)
         .map((row) => ({ quantity: Number(row.quantity), delivery_date: row.delivery_date }));
+
+      if (splits.length === 0) {
+        setError('At least one split row with quantity and delivery date is required');
+        return;
+      }
+
       await executeRowAction('SPLIT', { notes: dialogNote, splits });
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to submit SPLIT');
@@ -829,6 +822,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
 
   // For DataGrid pagination
   const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
+    setSelectedRowIds([]);
     if (model.pageSize !== pageSize) {
       setPageSize(model.pageSize);
       setPage(0);
@@ -837,13 +831,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
     }
   };
 
-
 const handleSearchChange = useCallback(
   (value: string) => {
+    if (value === searchInput) {
+      return;
+    }
     setSearchInput(value);
     setPage(0);
   },
-  [setPage]
+  [searchInput, setPage]
 );
 
   const handleAdvanceFilterChange = <K extends keyof AdvanceFilters>(
@@ -1643,14 +1639,17 @@ const handleSearchChange = useCallback(
         field: 'status',
         headerName: 'Status',
         width: 130,
-        renderCell: (params) => (
-          <Chip
-            variant="outlined"
-            label={params.value ? String(params.value).replace(/_/g, ' ') : '--'}
-            color={statusColors[params.value as PurchaseOrderStatus] || 'warning'}
-            size="small"
-          />
-        ),
+        renderCell: (params) => {
+          const lineStatus = String((params.row as LineItemTabRow).line_status || params.value || '');
+          return (
+            <Chip
+              variant="outlined"
+              label={lineStatus ? lineStatus.replace(/_/g, ' ') : '--'}
+              color={statusColors[lineStatus as PurchaseOrderStatus] || 'warning'}
+              size="small"
+            />
+          );
+        },
       },
       {
         field: 'action',
@@ -2110,6 +2109,60 @@ const handleSearchChange = useCallback(
     pinnedMRPLineItemIds,
   ]);
 
+  const showHeaderAcceptAction = selectedTab !== 0 && getCurrentTabActions().includes('ACCEPT');
+
+  const handleBulkAccept = useCallback(async () => {
+    if (selectedRowIds.length === 0) {
+      return;
+    }
+
+    const selectedRows = currentRows.filter((row) => selectedRowIds.includes(String(row.id)));
+    const byPo = selectedRows.reduce<Record<string, string[]>>((acc, row) => {
+      const poId = String((row as LineItemTabRow).po_id || '').trim();
+      const lineId = String(((row as LineItemTabRow).line_id || '').toString()).trim();
+
+      if (!poId || !lineId) {
+        return acc;
+      }
+
+      if (!acc[poId]) {
+        acc[poId] = [];
+      }
+      acc[poId]?.push(lineId);
+      return acc;
+    }, {});
+
+    const entries = Object.entries(byPo).filter(([, lineIds]) => lineIds.length > 0);
+    if (entries.length === 0) {
+      setError('Select at least one valid line row before accepting.');
+      return;
+    }
+
+    try {
+      setBulkAcceptLoading(true);
+      setError(null);
+
+      await Promise.all(
+        entries.map(async ([poId, lineIds]) => {
+          await purchaseOrderService.performPOAction(poId, {
+            action: 'ACCEPT',
+            line_item_ids: lineIds,
+            notes: bulkAcceptNote,
+          });
+        })
+      );
+
+      setBulkAcceptOpen(false);
+      setBulkAcceptNote('');
+      setSelectedRowIds([]);
+      await fetchPurchaseOrders();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to submit bulk ACCEPT action');
+    } finally {
+      setBulkAcceptLoading(false);
+    }
+  }, [selectedRowIds, currentRows, bulkAcceptNote, fetchPurchaseOrders]);
+
   const handleSelectedSitesChange = useCallback(
     (sites: string[]) => {
       setSelectedSites(sites);
@@ -2145,6 +2198,7 @@ const handleSearchChange = useCallback(
           onTabChange={(tab) => {
             setSelectedTab(tab);
             setPage(0);
+            setSelectedRowIds([]);
           }}
         />
 
@@ -2255,41 +2309,68 @@ const handleSearchChange = useCallback(
         sx={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 1.5,
           mb: 0,
-          p:0,
+          p: 0,
         }}
       >
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            backgroundColor: '#5E7DA5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <ViewListIcon
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
             sx={{
-              color: '#fff',
-              fontSize: 18,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              backgroundColor: '#5E7DA5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
             }}
-          />
+          >
+            <ViewListIcon
+              sx={{
+                color: '#fff',
+                fontSize: 18,
+              }}
+            />
+          </Box>
+
+          <Typography
+            sx={{
+              color: '#0B4F88',
+              fontSize: '1.50rem',
+              fontWeight: 400,
+              lineHeight: 1.2,
+            }}
+          >
+            {MODULE_TITLE[moduleVariant]}
+          </Typography>
         </Box>
 
-        <Typography
-          sx={{
-            color: '#0B4F88',
-            fontSize: '1.50rem',
-            fontWeight: 400,
-            lineHeight: 1.2,
-          }}
-        >
-          {MODULE_TITLE[moduleVariant]}
-        </Typography>
+        {showHeaderAcceptAction && (
+          <Button
+            size="medium"
+            variant="contained"
+            startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+            disabled={selectedRowIds.length === 0}
+            onClick={() => {
+              if (selectedRowIds.length === 0) {
+                return;
+              }
+              setBulkAcceptOpen(true);
+            }}
+            sx={{
+              borderColor: '#0B4F88',
+              color: '#fff',
+              fontWeight: 600,
+              borderRadius: 0.5,
+              px: 1.25,
+            }}
+          >
+            Accept
+          </Button>
+        )}
       </Box>
 
       <Typography
@@ -2311,11 +2392,14 @@ const handleSearchChange = useCallback(
       {/* TODO: Optimise this block if selected */}
       <Box sx={{ height: appliedFilters.length > 0 ? '76vh' : '78vh', width: '100%' }}>
         <DataGrid
+          key={`po-grid-${selectedTab}`}
           rows={currentRows}
           columns={currentColumns}
           rowCount={
             isLineItemTab
-              ? currentRows.length
+              ? currentPinFilter === 'pinned'
+                ? currentRows.length
+                : rowCount
               : selectedTab === 1
                 ? displayedRows.length
                 : currentPinFilter === 'pinned'
@@ -2324,21 +2408,19 @@ const handleSearchChange = useCallback(
           }
           rowHeight={35}
           pagination
-          paginationMode={isLineItemTab ? 'client' : 'server'}
+          paginationMode={isLineItemTab && currentPinFilter === 'pinned' ? 'client' : 'server'}
           pageSizeOptions={[10, 25, 50, 60, 100]}
           loading={loading}
           onPaginationModelChange={handlePaginationModelChange}
           paginationModel={{ page, pageSize }}
           getRowId={(row) => row.id}
           checkboxSelection
+          rowSelectionModel={selectedRowIds}
+          onRowSelectionModelChange={(model) => setSelectedRowIds(model)}
           disableRowSelectionOnClick={!isLineItemTab}
-          sortingMode={isLineItemTab || currentPinFilter === 'pinned' ? 'client' : 'server'}
+          sortingMode={currentPinFilter === 'pinned' ? 'client' : 'server'}
           onSortModelChange={(model) => {
             console.log('sort model: ', model);
-
-            if (isLineItemTab) {
-              return;
-            }
 
             if (currentPinFilter === 'pinned') {
               return;
@@ -2608,14 +2690,49 @@ const handleSearchChange = useCallback(
       <Menu anchorEl={actionAnchorEl} open={Boolean(actionAnchorEl)} onClose={closeActionMenu}>
         {getCurrentTabActions().map((action) => (
           <ActionMenuItem key={action} onClick={() => openDialogForAction(action)}>
-            {ACTION_LABELS[action] || action}
+            <ListItemIcon sx={{ minWidth: 28 }}>{ACTION_ICONS[action] || <InfoOutlinedIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText
+              primary={ACTION_LABELS[action] || action}
+              primaryTypographyProps={{ fontSize: 12 }}
+            />
           </ActionMenuItem>
         ))}
       </Menu>
 
+      <Dialog open={bulkAcceptOpen} onClose={() => setBulkAcceptOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Accept Selected Lines</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            You are about to accept {selectedRowIds.length} selected line(s).
+          </Typography>
+          <TextField
+            label="Notes"
+            fullWidth
+            multiline
+            rows={3}
+            value={bulkAcceptNote}
+            onChange={(e) => setBulkAcceptNote(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkAcceptOpen(false)} disabled={bulkAcceptLoading} sx={{ borderRadius: 0.75 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void handleBulkAccept()}
+            disabled={bulkAcceptLoading || selectedRowIds.length === 0}
+            sx={{ borderRadius: 0.75 }}
+          >
+            {bulkAcceptLoading ? 'Submitting...' : 'Accept'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <MoveDateDialog
         open={activeDialog === 'MOVE_IN'}
         mode="MOVE_IN"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
@@ -2629,6 +2746,7 @@ const handleSearchChange = useCallback(
       <MoveDateDialog
         open={activeDialog === 'MOVE_OUT'}
         mode="MOVE_OUT"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
@@ -2641,6 +2759,7 @@ const handleSearchChange = useCallback(
 
       <SplitDialog
         open={activeDialog === 'SPLIT'}
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         rows={splitRows}
@@ -2655,6 +2774,7 @@ const handleSearchChange = useCallback(
         open={activeDialog === 'HOLD'}
         title="Hold"
         submitLabel="Submit Hold Request"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
@@ -2669,6 +2789,7 @@ const handleSearchChange = useCallback(
         open={activeDialog === 'ACCEPT'}
         title="Accept"
         submitLabel="Submit Acceptance"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
@@ -2683,6 +2804,7 @@ const handleSearchChange = useCallback(
         open={activeDialog === 'ACKNOWLEDGE'}
         title="Acknowledge"
         submitLabel="Submit Acknowledgement"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
@@ -2697,6 +2819,7 @@ const handleSearchChange = useCallback(
         open={activeDialog === 'REJECT'}
         title="Reject"
         submitLabel="Submit Rejection"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
@@ -2711,6 +2834,7 @@ const handleSearchChange = useCallback(
         open={activeDialog === 'NEED_MORE_INFORMATION'}
         title="Need More Information"
         submitLabel="Submit Info Request"
+        poNumber={String(selectedActionRow?.po_number || '')}
         lineId={String(selectedActionRow?.line_number || selectedActionRow?.line_id || '--')}
         materialCode={String(selectedActionRow?.material_code || '')}
         quantity={Number(selectedActionRow?.quantity || 0)}
