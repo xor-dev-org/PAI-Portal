@@ -3,8 +3,6 @@ import { Box, Container, Toolbar } from '@mui/material';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import ChatWidget from '@/components/common/ChatWidget';
-import teamChatData from '../../data/initialConversations.json';
-import { Conversation } from '../common/ChatWidget';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -61,7 +59,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* Conditionally render global chat only if it is not overridden */}
       {!hideGlobalChat && (
         <ChatWidget 
-          initialConversations={teamChatData as Conversation[]} 
           title="Team Messages"
           subtitle="Internal corporate communications"
         />
