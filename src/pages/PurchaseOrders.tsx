@@ -1266,7 +1266,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_quantity',
-        headerName: 'Supplier confirmed qty',
+        headerName: 'Supplier Confirmed QTY',
         width: 65,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
@@ -1297,7 +1297,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_unit_price',
-        headerName: 'Update Unite price',
+        headerName: 'Update Unite Price',
         width: 105,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
@@ -1366,7 +1366,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'supplier_confirmation_date',
-        headerName: 'Supplier Confi...',
+        headerName: 'Supplier Confirmation Date',
         width: 130,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
@@ -1418,7 +1418,7 @@ const handleSearchChange = useCallback(
       {
         field: 'status',
         headerName: 'Status',
-        width: 140,
+        width: 120,
         renderCell: (params) => (
           <Chip
             variant="outlined"
@@ -1508,7 +1508,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'schedule_line',
-        headerName: 'Sc...',
+        headerName: 'Schedule line',
         width: 55,
         renderCell: (params) => {
           const scheduleLine =
@@ -1525,7 +1525,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'description',
-        headerName: 'Short Desc...',
+        headerName: 'Short Description',
         width: 140,
         renderCell: (params) => params.value || '--',
       },
@@ -1543,8 +1543,8 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_quantity',
-        headerName: 'Supplier Confirm...',
-        width: 125,
+        headerName: 'Supplier Confirmed Qty',
+        width: 100,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
             <Typography
@@ -1569,7 +1569,7 @@ const handleSearchChange = useCallback(
       {
         field: 'updated_unit_price',
         headerName: 'Revised Unit Price',
-        width: 135,
+        width: 120,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
             <Typography
@@ -1594,7 +1594,7 @@ const handleSearchChange = useCallback(
       {
         field: 'updated_net_value',
         headerName: 'Revised TotalAmount',
-        width: 145,
+        width: 120,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
             <Typography
@@ -1759,7 +1759,7 @@ const handleSearchChange = useCallback(
      },
      {
        field: 'line_number',
-       headerName: 'Line Item...',
+       headerName: 'Line Item',
        width: 95,
        renderCell: (params) => params.value || '--',
      },
