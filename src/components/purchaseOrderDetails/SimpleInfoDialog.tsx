@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Close, OpenInFull } from '@mui/icons-material';
-import { Box, Button, Dialog, DialogActions, DialogContent, Divider, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { Close } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, IconButton, Stack, TextField, Typography } from '@mui/material';
 
 import { poDetailsColors } from './constants';
 
@@ -37,9 +37,8 @@ const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
   void quantity;
   void deliveryDate;
 
-  const [fullscreen, setFullscreen] = useState(false);
-  const poSuffix = poNumber ? ` - PO ${poNumber}` : '';
-  const headerSuffix = lineId ? ` - PO Line ${lineId}` : '';
+  const [fullscreen] = useState(false);
+  const headerTitle = `${title}${poNumber ? ` PO -${poNumber}` : ''}${lineId ? `-Line Item No-${lineId}` : ''}`;
 
   return (
     <Dialog
@@ -48,29 +47,33 @@ const SimpleInfoDialog: React.FC<SimpleInfoDialogProps> = ({
       maxWidth="md"
       fullWidth
       fullScreen={fullscreen}
-      PaperProps={{ sx: { borderRadius: fullscreen ? 0 : 1.5 } }}
+      PaperProps={{ sx: { borderRadius: fullscreen ? 0 : 0.75, backgroundColor: '#f3f3f3' } }}
     >
-      <Box sx={{ px: 2, py: 1, backgroundColor: poDetailsColors.darkBlue, color: '#fff', position: 'relative' }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{`${title}${poSuffix}${headerSuffix}`}</Typography>
-        <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', right: 8, top: 8 }} alignItems="center">
-          <IconButton size="small" onClick={() => setFullscreen((v) => !v)} sx={{ color: 'common.white' }}>
-            <OpenInFull fontSize="small" />
-          </IconButton>
-          <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.45)' }} />
-          <IconButton size="small" onClick={onClose} sx={{ color: 'common.white' }}>
-            <Close fontSize="small" />
-          </IconButton>
-        </Stack>
+      <Box sx={{ px: 2, py: 1.25, backgroundColor: poDetailsColors.darkBlue, color: '#fff', position: 'relative' }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{headerTitle}</Typography>
+        <IconButton size="small" onClick={onClose} sx={{ color: 'common.white', position: 'absolute', right: 8, top: 8 }}>
+          <Close fontSize="small" />
+        </IconButton>
       </Box>
-      <DialogContent sx={{ p: 2 }}>
+      <DialogContent sx={{ p: 2.5, backgroundColor: '#f3f3f3' }}>
         <Stack spacing={2}>
-          <TextField label="Add Info" fullWidth multiline rows={4} value={note} onChange={(e) => onNoteChange(e.target.value)} />
+          <TextField
+            label="Add Info"
+            fullWidth
+            multiline
+            rows={4}
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+            sx={{ backgroundColor: '#f3f3f3' }}
+          />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button size="small" variant="outlined" onClick={onClose}>Cancel</Button>
-        <Button size="small" variant="contained" onClick={onSubmit} sx={{ backgroundColor: poDetailsColors.darkBlue }}>
-          {submitLabel || 'Submit'}
+      <DialogActions sx={{ p: 2.5, pt: 0, backgroundColor: '#f3f3f3' }}>
+        <Button size="small" variant="contained" onClick={onClose} sx={{ backgroundColor: poDetailsColors.darkBlue, borderRadius: 0.75 }}>
+          CANCEL
+        </Button>
+        <Button size="small" variant="contained" onClick={onSubmit} sx={{ backgroundColor: poDetailsColors.darkBlue, borderRadius: 0.75 }}>
+          {(submitLabel || 'Submit').toUpperCase()}
         </Button>
       </DialogActions>
     </Dialog>

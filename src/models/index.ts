@@ -171,7 +171,7 @@ export interface PurchaseOrder {
 
 export interface POActionRequest {
   action: string;
-  line_item_id: string;
+  line_item_id?: string;
   line_item_ids?: string[];
   notes?: string;
   move_in_date?: string;
