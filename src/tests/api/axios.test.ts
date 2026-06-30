@@ -7,10 +7,10 @@ describe('axios client', () => {
   });
 
   it('should have correct base URL', () => {
-    expect(apiClient.defaults.baseURL).toBe('/api');
+    expect(apiClient.defaults.baseURL).toBe('');
   });
 
   it('should have default timeout', () => {
-    expect(apiClient.defaults.timeout).toBe(10000);
+    expect(apiClient.defaults.timeout).toBe(30000);
   });
 });
