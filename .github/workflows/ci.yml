@@ -24,3 +24,5 @@ jobs:
           app_location: "/" # Location of your frontend code
           api_location: ""  # Leave blank since your backend is on App Services
           output_location: "dist" # Change to 'build' if using Create-React-App
+          # FORCE AZURE TO USE A SUPPORTED NODE RUNTIME HERE:
+          node_version: "22.22.0"
