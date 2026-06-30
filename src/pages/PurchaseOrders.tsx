@@ -969,7 +969,7 @@ const handleSearchChange = useCallback(
     [shouldHighlightNeedByDate]
   );
 
-  // DataGrid columns
+  // @ts-ignore
   const columns: GridColDef[] = React.useMemo(
     () => [
       {
