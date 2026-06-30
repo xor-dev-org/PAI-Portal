@@ -511,10 +511,22 @@ useEffect(() => {
   };
 
   const getConversationPreview = (conversation: Conversation) => {
-    const lastAcsMessage = getNewestMessage(acsMessagesByConversation[conversation.id] || [])?.text;
-    const lastLocalMessage = getNewestMessage(conversation.messages || [])?.text;
-    return lastAcsMessage || lastLocalMessage || conversation.lastMessage || 'No messages yet';
+    const lastAcsMessage =
+      getNewestMessage(acsMessagesByConversation[conversation.id] || [])?.text;
+    const lastLocalMessage =
+      getNewestMessage(conversation.messages || [])?.text;
+
+    const preview =
+      lastAcsMessage ||
+      lastLocalMessage ||
+      conversation.lastMessage ||
+      "No messages yet";
+
+    return preview.length > 40
+      ? `${preview.substring(0, 40)}...`
+      : preview;
   };
+ 
 
   const syncConversationReadState = async (
     conversation: Conversation,
