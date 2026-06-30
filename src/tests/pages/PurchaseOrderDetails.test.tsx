@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PurchaseOrderDetails from '@/pages/PurchaseOrderDetails';
 import { purchaseOrderService } from '@/api/services/purchaseOrderService';
+import { userService } from '@/api/services/userService';
 import { PurchaseOrder, PurchaseOrderStatus } from '@/models';
 
 vi.mock('@/components/common/ChatWidget', () => ({
@@ -18,7 +19,22 @@ vi.mock('@/hooks/useAuth', () => ({
 vi.mock('@/api/services/purchaseOrderService', () => ({
   purchaseOrderService: {
     getPOById: vi.fn(),
+    getPOHistory: vi.fn(),
+    getPODocuments: vi.fn(),
+    getPODocumentTags: vi.fn(),
     performPOAction: vi.fn(),
+    uploadPODocument: vi.fn(),
+    replacePODocument: vi.fn(),
+    downloadPODocument: vi.fn(),
+    performPODocumentAction: vi.fn(),
+  },
+}));
+
+vi.mock('@/api/services/userService', () => ({
+  userService: {
+    getPinnedRows: vi.fn(),
+    updatePinnedRows: vi.fn(),
+    getUsersByRole: vi.fn(),
   },
 }));
 
@@ -35,6 +51,7 @@ const basePO: PurchaseOrder = {
   total_value: 12000,
   delivery_date: '2026-06-25',
   payment_terms: 'Net 30',
+  revision_changes: 0,
   mrp_exceptions: 'NONE',
   created_date: '2026-05-28',
   line_items: [
@@ -80,7 +97,13 @@ describe('PurchaseOrderDetails', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(purchaseOrderService.getPOById).mockResolvedValue(basePO);
+    vi.mocked(purchaseOrderService.getPOHistory).mockResolvedValue([]);
+    vi.mocked(purchaseOrderService.getPODocuments).mockResolvedValue([]);
+    vi.mocked(purchaseOrderService.getPODocumentTags).mockResolvedValue(['LINE_ITEM']);
     vi.mocked(purchaseOrderService.performPOAction).mockResolvedValue(basePO);
+    vi.mocked(userService.getPinnedRows).mockResolvedValue([]);
+    vi.mocked(userService.updatePinnedRows).mockResolvedValue({} as any);
+    vi.mocked(userService.getUsersByRole).mockResolvedValue([]);
   });
 
   it('filters line items by status tabs using status aliases', async () => {
@@ -100,6 +123,24 @@ describe('PurchaseOrderDetails', () => {
     await waitFor(() => {
       expect(screen.getByText('MAT-AAA')).toBeInTheDocument();
       expect(screen.queryByText('MAT-BBB')).not.toBeInTheDocument();
+    });
+  });
+
+  it('switches to the documents tab when the documents icon is clicked', async () => {
+    render(
+      <MemoryRouter initialEntries={['/purchase-orders/po-1']}>
+        <Routes>
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('MAT-AAA')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /open documents/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /document/i })).toHaveAttribute('aria-selected', 'true');
     });
   });
 

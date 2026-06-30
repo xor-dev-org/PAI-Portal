@@ -1,49 +1,40 @@
-import React from 'react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogContent,
-  IconButton,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import OpenInFullIcon from '@mui/icons-material/OpenInFull';
-import { LineItem } from '@/models';
+import React, { useState } from 'react';
+import { Close } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, Grid, IconButton, TextField, Typography } from '@mui/material';
+
 import { poDetailsColors } from './constants';
-import { formatActionLabel, formatLineId } from './helpers';
 
 interface MoveDateDialogProps {
   open: boolean;
-  lineItem: LineItem | null;
-  action: 'MOVE_IN' | 'MOVE_OUT' | null;
-  fullscreen: boolean;
-  notes: string;
-  dateValue: string;
+  mode: 'MOVE_IN' | 'MOVE_OUT';
+  poNumber?: string;
+  lineId: string;
+  materialCode?: string;
+  quantity?: number;
+  currentDate?: string;
+  date: string;
   onDateChange: (value: string) => void;
-  onNotesChange: (value: string) => void;
   onClose: () => void;
-  onToggleFullscreen: () => void;
   onSubmit: () => void;
 }
 
 const MoveDateDialog: React.FC<MoveDateDialogProps> = ({
   open,
-  lineItem,
-  action,
-  fullscreen,
-  notes,
-  dateValue,
+  mode,
+  poNumber,
+  lineId,
+  materialCode,
+  quantity,
+  currentDate,
+  date,
   onDateChange,
-  onNotesChange,
   onClose,
-  onToggleFullscreen,
   onSubmit,
 }) => {
-  const lineId = lineItem ? lineItem.id || formatLineId(lineItem.line_number) : '';
-  const fieldLabel = action === 'MOVE_IN' ? 'Required In-House Date' : 'Shipment Date';
+  const [fullscreen] = useState(false);
+  const title = mode === 'MOVE_IN' ? 'Request Move in Delivery Date' : 'Request Move out Delivery Date';
+  const fieldLabel = mode === 'MOVE_IN' ? 'New Required In House Date' : 'New Shipment Date';
+  const currentLabel = mode === 'MOVE_IN' ? 'Current Required In House Date' : 'Current Shipment Date';
 
   return (
     <Dialog
@@ -52,75 +43,48 @@ const MoveDateDialog: React.FC<MoveDateDialogProps> = ({
       fullScreen={fullscreen}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { maxWidth: fullscreen ? '100%' : 560, borderRadius: 1.5 } }}
+      PaperProps={{ sx: { maxWidth: fullscreen ? '100%' : 560, borderRadius: fullscreen ? 0 : 0.75, backgroundColor: '#f3f3f3' } }}
     >
-      <Box
-        sx={{
-          px: 2,
-          py: 1,
-          backgroundColor: poDetailsColors.darkBlue,
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <Box sx={{ px: 2, py: 1.25, backgroundColor: poDetailsColors.darkBlue, color: '#fff', position: 'relative' }}>
         <Typography sx={{ fontSize: 14, fontWeight: 700 }}>
-          {action ? `${formatActionLabel(action)} Date - PO Line ${lineId}` : 'Update Date'}
+          {title}{poNumber ? ` PO -${poNumber}` : ''}{lineId ? `-Line Item No-${lineId}` : ''}
         </Typography>
-        <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" onClick={onToggleFullscreen} sx={{ color: '#fff' }}>
-            <OpenInFullIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={onClose} sx={{ color: '#fff' }}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Stack>
+        <IconButton size="small" onClick={onClose} sx={{ color: '#fff', position: 'absolute', right: 8, top: 8 }}>
+          <Close fontSize="small" />
+        </IconButton>
       </Box>
 
-      <DialogContent sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <TextField
-            size="small"
-            label="Line Item"
-            value={lineId}
-            InputProps={{ readOnly: true }}
-          />
-          <TextField
-            size="small"
-            type="date"
-            label={fieldLabel}
-            value={dateValue}
-            onChange={(event) => onDateChange(event.target.value)}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          <TextField
-            fullWidth
-            size="small"
-            multiline
-            minRows={3}
-            label="Notes"
-            value={notes}
-            onChange={(event) => onNotesChange(event.target.value)}
-          />
-        </Stack>
-
-        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
-          <Button size="small" variant="contained" onClick={onClose} sx={{ backgroundColor: poDetailsColors.darkBlue }}>
-            Cancel
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            onClick={onSubmit}
-            disabled={!dateValue}
-            sx={{ backgroundColor: poDetailsColors.darkBlue }}
-          >
-            Save Date
-          </Button>
-        </Stack>
+      <DialogContent sx={{ p: 2.5, backgroundColor: '#f3f3f3' }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Po Line" fullWidth size="small" disabled value={lineId} sx={{ '& .MuiInputBase-root': { backgroundColor: '#e8e8e8' } }} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Material No." fullWidth size="small" disabled value={materialCode || ''} sx={{ '& .MuiInputBase-root': { backgroundColor: '#e8e8e8' } }} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label="Quantity" fullWidth size="small" disabled value={quantity || ''} sx={{ '& .MuiInputBase-root': { backgroundColor: '#e8e8e8' } }} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label={currentLabel} fullWidth size="small" disabled value={currentDate || ''} sx={{ '& .MuiInputBase-root': { backgroundColor: '#e8e8e8' } }} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField label={fieldLabel} fullWidth size="small" type="date" InputLabelProps={{ shrink: true }} value={date} onChange={(e) => onDateChange(e.target.value)} />
+          </Grid>
+        </Grid>
       </DialogContent>
+      <DialogActions sx={{ p: 2.5, pt: 0, backgroundColor: '#f3f3f3' }}>
+        <Button size="small" variant="contained" onClick={onClose} sx={{ backgroundColor: poDetailsColors.darkBlue, borderRadius: 0.75 }}>CANCEL</Button>
+        <Button
+          size="small"
+          variant="contained"
+          onClick={onSubmit}
+          disabled={!date}
+          sx={{ backgroundColor: poDetailsColors.darkBlue, borderRadius: 0.75 }}
+        >
+          {mode === 'MOVE_IN' ? 'SUBMIT MOVE IN REQUEST' : 'SUBMIT MOVE OUT REQUEST'}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 };

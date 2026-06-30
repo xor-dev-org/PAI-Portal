@@ -8,11 +8,16 @@ export enum UserRole {
 export interface User {
   id: string;
   name: string;
+  phone?: string;
   email: string;
   role: UserRole;
+  password?: string;
   supplier_number?: string;
   address?: string;
   site?: string;
+  supplier_msid?: number | null;
+  pinned_rows?: string[];
+  line_pinned_rows?: string[];
 }
 
 export interface AuthResponse {
@@ -67,6 +72,11 @@ export interface LineItem {
   updated_material_no?: string;
   updated_description?: string;
   updated_net_value?: number;
+  supplier_confirmation_date?: string;
+  recommendation?: string;
+  exception_type?: string;
+  mrp_action_required?: boolean;
+  concession?: string;
   documents?: string[];
   line_status?: string;
   default_expanded?: boolean;
@@ -137,14 +147,18 @@ export interface PurchaseOrder {
   status: PurchaseOrderStatus;
   supplier_id: string;
   supplier_name: string;
+  supplier_email?: string;
+  site?: string;
   procurement_specialist_id: string;
   delegated_user_id: string;
   currency: string;
   total_value: number;
   delivery_date: string;
+  mrp_need_by_date?: string | null;
   payment_terms: string;
   mrp_exceptions: string;
   created_date: string;
+  revision_changes: number;
   line_items: LineItem[];
   po_details?: PODetailsPanel;
   status_history?: POStatusHistory[];
@@ -157,10 +171,18 @@ export interface PurchaseOrder {
 
 export interface POActionRequest {
   action: string;
-  line_item_id: string;
+  line_item_id?: string;
+  line_item_ids?: string[];
   notes?: string;
   move_in_date?: string;
   move_out_date?: string;
+  splits?: Array<{ quantity: number; delivery_date: string }>;
+  proposed_quantity?: number | null;
+  proposed_unit_price?: number | null;
+  proposed_delivery_date?: string | null;
+  concession_reason?: string;
+  concession_description?: string;
+  document_id?: string;
 }
 
 export interface PODropdownConfig {
@@ -189,6 +211,10 @@ export interface POFilters {
   po_number?: string;
   supplier_name?: string;
 
+  supplier_email?: string;
+  site?: string;
+  sites?: string[];
+
   total_value_from?: number;
   total_value_to?: number;
 
@@ -196,12 +222,15 @@ export interface POFilters {
   delivery_date_to?: string;
 
   source_system?: string;
+  revision_changes?: number;
 
   items_from?: number;
   items_to?: number;
 
   mrp_exceptions?: string;
   pinned_po_list?: string[];
+  tab_mode?: 'ready_to_review' | 'mrp_exception' | 'exceptions_alerts' | 'action_required';
+  include_line_items_only?: boolean;
 }
 
 export interface AdvanceFilters {
@@ -247,14 +276,14 @@ export interface Delegation {
   po_number: string;
   supplier_name: string;
   delegated_from_id: string;
-  delegated_from_name: string;
+  delegated_from_name?: string;
   delegated_to_id: string;
-  delegated_to_name: string;
+  delegated_to_name?: string;
   role: string;
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
   status: DelegationStatus;
-  created_date: string;
+  created_date: string | null;
   total_value?: number;
 }
 
@@ -271,4 +300,9 @@ export interface DelegationListResponse {
   page_size: number;
   total: number;
   data: Delegation[];
+}
+
+
+export interface AIChatResponse {
+  output: string;
 }

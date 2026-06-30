@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Drawer,
   List,
@@ -9,8 +9,6 @@ import {
   Toolbar,
   Divider,
   Box,
-  IconButton,
-  useMediaQuery,
   useTheme,
 } from '@mui/material';
 import {
@@ -19,27 +17,23 @@ import {
   SwapHoriz as DelegationIcon,
   Chat as ChatIcon,
   Settings as SettingsIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/models';
 
 const drawerWidth = 240;
-const miniDrawerWidth = 64;
 
 interface SidebarProps {
   mobileOpen: boolean;
   onDrawerToggle: () => void;
+  desktopOpen: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle, desktopOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
 
   const menuItems = [
@@ -87,21 +81,18 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
     }
   };
 
-  const toggleCollapse = () => {
-    setCollapsed(!collapsed);
-  };
-
   const drawer = (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        // height: '100%',
         bgcolor: 'background.paper',
         color: 'text.primary',
         borderRight: '1px solid',
         borderColor: 'divider',
         marginTop: '5rem',
+        
       }}
     >
       <Toolbar
@@ -116,21 +107,12 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
           width: '100%',
         }}
       >
-        {!collapsed ? (
-          <Box
-            component="img"
-            src="/fls_logo.png"
-            alt="App logo"
-            sx={{ width: '100%', height: 50, objectFit: 'contain' }}
-          />
-        ) : (
-          <Box
-            component="img"
-            src="/vite.svg"
-            alt="Logo"
-            sx={{ width: 40, height: 40, objectFit: 'contain', p: 0.5 }}
-          />
-        )}
+        <Box
+          component="img"
+          src="/fls_logo.png"
+          alt="App logo"
+          sx={{ width: '100%', height: 50, objectFit: 'contain' }}
+        />
       </Toolbar>
       <Divider />
       <List sx={{ flexGrow: 1, p: 0 }}>
@@ -145,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
                 selected={isSelected}
                 onClick={() => handleNavigation(item.path)}
                 sx={{
-                  justifyContent: collapsed ? 'center' : 'initial',
+                  justifyContent: 'initial',
                   px: 2.5,
                   borderRadius: '0px',
                   mx: 0,
@@ -169,33 +151,19 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
                 <ListItemIcon
                   sx={{
                     minWidth: 0,
-                    mr: collapsed ? 'auto' : 3,
+                    mr: 3,
                     justifyContent: 'center',
                     color: isSelected ? theme.palette.primary.main : theme.palette.primary.main,
                   }}
                 >
                   {item.icon}
                 </ListItemIcon>
-                {!collapsed && <ListItemText primary={item.text} />}
+                <ListItemText primary={item.text} />
               </ListItemButton>
             </ListItem>
           );
         })}
       </List>
-
-      {!isMobile && (
-        <>
-          <Divider />
-          <Box
-            bgcolor={theme.palette.background.paper}
-            sx={{ p: 1, display: 'flex', justifyContent: 'center' }}
-          >
-            <IconButton onClick={toggleCollapse}>
-              {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-            </IconButton>
-          </Box>
-        </>
-      )}
     </Box>
   );
 
@@ -203,10 +171,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
     <Box
       component="nav"
       sx={{
-        width: { sm: collapsed ? miniDrawerWidth : drawerWidth },
+        width: { sm: desktopOpen ? drawerWidth : 0 },
         flexShrink: { sm: 0 },
-        transition: 'width 0.2s',
+        transition: 'width 0.2s ease',
         bgcolor: 'background.paper',
+        overflow: 'hidden',
       }}
       aria-label="navigation menu"
     >
@@ -234,11 +203,13 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) => {
         variant="permanent"
         sx={{
           display: { xs: 'none', sm: 'block' },
+          visibility: desktopOpen ? 'visible' : 'hidden',
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: collapsed ? miniDrawerWidth : drawerWidth,
-            transition: 'width 0.2s',
+            width: desktopOpen ? drawerWidth : 0,
+            transition: 'width 0.2s ease',
             overflowX: 'hidden',
+            display: desktopOpen ? 'block' : 'none',
           },
         }}
         open

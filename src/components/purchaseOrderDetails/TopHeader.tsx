@@ -74,6 +74,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({
               borderColor: poDetailsColors.primaryBlue,
               color: poDetailsColors.primaryBlue,
               fontWeight: 600,
+              borderRadius: 0.75,
             }}
           >
             {action}
@@ -98,6 +99,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                 py: 0.4,
                 fontSize: 12,
                 fontWeight: 700,
+                borderRadius: 0.75,
               },
               '& .Mui-selected': {
                 backgroundColor: `${poDetailsColors.darkBlue} !important`,
