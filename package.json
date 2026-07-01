@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Procurement Management Portal for SCM - Production-ready Vite + React + TypeScript starter",
   "engines": {
-    "node": ">=24.16.0"
+    "node": ">=20.0.0 <24.0.0"
   },
   "scripts": {
     "dev": "vite",
