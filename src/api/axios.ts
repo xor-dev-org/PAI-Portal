@@ -1,7 +1,7 @@
 import { cookieUtils } from '@/utils/cookies';
 import axios, { AxiosInstance } from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://poc-rest-api-h2c9bkayf6akacae.centralindia-01.azurewebsites.net';
 export const UNAUTHORIZED_EVENT = 'app:unauthorized';
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
