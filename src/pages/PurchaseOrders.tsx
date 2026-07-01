@@ -50,7 +50,6 @@ import {
   PurchaseOrderStatus,
 } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserGridColumnVisibility } from '@/hooks/useUserGridColumnVisibility';
 import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { usePagination } from '@/hooks/usePagination';
@@ -59,6 +58,7 @@ import { logger } from '@/services/logger';
 import ClearIcon from '@mui/icons-material/Clear';
 import './grid.css';
 import { userService } from '@/api/services/userService';
+import type { PinType } from '@/api/services/userService';
 import {
   MoveDateDialog,
   ProposeChangeDialog,
@@ -74,6 +74,8 @@ type LineItemTabRow = {
   po_id: string;
   [key: string]: unknown;
 };
+
+const PAGE_PIN_TYPES: PinType[] = ['po', 'po_to_review', 'mrp_exception'];
 
 type PurchaseOrdersModuleVariant = 'default' | 'supplier-collaboration' | 'cockpit';
 
@@ -136,6 +138,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
   const navigate = useNavigate();
   const { user } = useAuth();
   const theme = useTheme();
+  const userId = user?.id;
+  const userRole = user?.role;
+  const supplierFilterId = userRole === 'SUPPLIER' ? String(user?.supplier_msid ?? userId ?? '') : '';
   const isDefaultSupplierView = moduleVariant === 'default' && user?.role === 'SUPPLIER';
   const isSupplierCollaborationMode = moduleVariant === 'supplier-collaboration' || isDefaultSupplierView;
   const moduleTabs = useMemo(() => {
@@ -272,10 +277,22 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
 
   const togglePin = (poId: string) => {
     setPinnedPOIds((prev) => {
-      const updated = prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId];
+      const wasPinned = prev.includes(poId);
+      const updated = wasPinned ? prev.filter((id) => id !== poId) : [...prev, poId];
 
-      if (user?.id) {
-        userService.updatePinnedRows(user.id, updated, 'po');
+      setPinnedPOsRowCount(updated.length);
+
+      if (wasPinned) {
+        setPinnedPOs((rows) => rows.filter((po) => po.id !== poId));
+      } else {
+        const poToPin = purchaseOrders.find((po) => po.id === poId);
+        if (poToPin) {
+          setPinnedPOs((rows) => (rows.some((po) => po.id === poId) ? rows : [poToPin, ...rows]));
+        }
+      }
+
+      if (userId) {
+        userService.updatePinnedRows(userId, updated, 'po');
       }
 
       return updated;
@@ -288,8 +305,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
         ? prev.filter((id) => id !== lineItemRowId)
         : [...prev, lineItemRowId];
 
-      if (user?.id) {
-        userService.updatePinnedRows(user.id, updated, 'po_to_review');
+      if (userId) {
+        userService.updatePinnedRows(userId, updated, 'po_to_review');
       }
 
       return updated;
@@ -302,8 +319,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
         ? prev.filter((id) => id !== lineItemRowId)
         : [...prev, lineItemRowId];
 
-      if (user?.id) {
-        userService.updatePinnedRows(user.id, updated, 'mrp_exception');
+      if (userId) {
+        userService.updatePinnedRows(userId, updated, 'mrp_exception');
       }
 
       return updated;
@@ -329,6 +346,36 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
     loadAvailableSites();
   }, []);
 
+  const loadPinnedState = useCallback(async () => {
+    if (!userId) {
+      setPinnedPOIds([]);
+      setPinnedPOToReviewLineItemIds([]);
+      setPinnedMRPLineItemIds([]);
+      setPinnedPOs([]);
+      setPinnedPOsRowCount(0);
+      return;
+    }
+
+    try {
+      const [pinnedRowsResult, pinnedPOListResult] = await Promise.all([
+        userService.getPinnedRowsBatch(userId, PAGE_PIN_TYPES),
+        purchaseOrderService.getPinnedPOList(userId),
+      ]);
+
+      setPinnedPOIds(pinnedRowsResult.po || []);
+      setPinnedPOToReviewLineItemIds(pinnedRowsResult.po_to_review || []);
+      setPinnedMRPLineItemIds(pinnedRowsResult.mrp_exception || []);
+      setPinnedPOs(pinnedPOListResult.data);
+      setPinnedPOsRowCount(pinnedPOListResult.total);
+    } catch (err) {
+      logger.error('Failed to load pinned state', { error: String(err) });
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void loadPinnedState();
+  }, [loadPinnedState]);
+
   const fetchPurchaseOrders = useCallback(async () => {
     if (!sitesLoaded) {
       return;
@@ -349,21 +396,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
     try {
       setLoading(true);
       setError(null);
-
-      if (user?.id) {
-        const pinnedPOResult = await userService.getPinnedRows(user.id, 'po');
-        const pinnedPOToReviewResult = await userService.getPinnedRows(user.id, 'po_to_review');
-        const pinnedMRPResult = await userService.getPinnedRows(user.id, 'mrp_exception');
-
-        setPinnedPOIds(pinnedPOResult);
-        setPinnedPOToReviewLineItemIds(pinnedPOToReviewResult);
-        setPinnedMRPLineItemIds(pinnedMRPResult);
-
-        const pinnedPOList = await purchaseOrderService.getPinnedPOList(user.id);
-
-        setPinnedPOs(pinnedPOList.data);
-        setPinnedPOsRowCount(pinnedPOList.total);
-      }
 
       if (isLineTabRequest) {
         const lineItemFilters: POFiltersType = {
@@ -387,8 +419,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
           lineItemFilters.site = selectedSites.join(',');
         }
 
-        if (user?.role === 'SUPPLIER') {
-          lineItemFilters.supplier_id = String(user.supplier_msid ?? user.id);
+        if (supplierFilterId) {
+          lineItemFilters.supplier_id = supplierFilterId;
         }
 
         const lineResponse = await purchaseOrderService.getPOList(lineItemFilters);
@@ -429,8 +461,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
         filters.site = selectedSites.join(',');
       }
 
-      if (user?.role === 'SUPPLIER') {
-        filters.supplier_id = String(user.supplier_msid ?? user.id);
+      if (supplierFilterId) {
+        filters.supplier_id = supplierFilterId;
       }
 
       logger.info('Fetching purchase orders', {
@@ -467,12 +499,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({ moduleVariant = 'defaul
     statusFilter,
     sortModel,
     searchInput,
-    user,
+    userId,
     advanceFilters,
     selectedSites,
     sitesLoaded,
     isSupplierCollaboration,
     availableSites.length,
+    supplierFilterId,
   ]);
 
   useEffect(() => {
@@ -970,7 +1003,7 @@ const handleSearchChange = useCallback(
     [shouldHighlightNeedByDate]
   );
 
-  // @ts-ignore
+  // DataGrid columns
   const columns: GridColDef[] = React.useMemo(
     () => [
       {
@@ -1091,7 +1124,7 @@ const handleSearchChange = useCallback(
       {
         field: 'source_system',
         headerName: 'ERP',
-        width: '80',
+        width: 80,
       },
 
       ...(user?.role === 'SUPPLIER'
@@ -2314,35 +2347,6 @@ const handleSearchChange = useCallback(
   //   }
   // }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
 
-  const gridColumnVisibilityKey = React.useMemo(() => {
-    if (isSupplierCollaboration) {
-      if (selectedTab === 3) {
-        return 'supplier_exceptions_alerts';
-      }
-
-      if (selectedTab === 2) {
-        return 'supplier_action_required';
-      }
-
-      return 'supplier_all_open_po';
-    }
-
-    if (selectedTab === 3) {
-      return 'ps_mrp_exception';
-    }
-
-    if (selectedTab === 2) {
-      return 'ps_po_to_review';
-    }
-
-    return 'ps_all_open_po';
-  }, [isSupplierCollaboration, selectedTab]);
-
-  const { columnVisibilityModel, handleColumnVisibilityModelChange } = useUserGridColumnVisibility(
-    user?.id,
-    gridColumnVisibilityKey
-  );
-
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
   }
@@ -2462,8 +2466,6 @@ const handleSearchChange = useCallback(
           rowSelectionModel={selectedRowIds}
           onRowSelectionModelChange={(model) => setSelectedRowIds(model)}
           disableRowSelectionOnClick={!isLineItemTab}
-          columnVisibilityModel={columnVisibilityModel}
-          onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
           sortingMode="server"
           sortingOrder={['asc', 'desc', null]}
           sortModel={dataGridSortModel}

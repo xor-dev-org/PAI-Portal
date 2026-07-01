@@ -1,5 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '@/app/store';
+import { logout } from '@/app/slices/authSlice';
 import AppLayout from '@/components/layout/AppLayout';
 import PrivateRoute from '@/components/common/PrivateRoute';
 import Dashboard from '@/pages/Dashboard';
@@ -14,10 +16,35 @@ import Delegation from '@/pages/Delegation';
 import Chat from '@/pages/Chat';
 import Settings from '@/pages/Settings';
 import { UserRole } from '@/models';
+import { UNAUTHORIZED_EVENT } from '@/api/axios';
+
+const AuthRedirectHandler: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const handleUnauthorized = () => {
+      dispatch(logout());
+      if (location.pathname !== '/login') {
+        navigate('/login', { replace: true, state: { from: location } });
+      }
+    };
+
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    };
+  }, [dispatch, location, navigate]);
+
+  return null;
+};
 
 const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
+      <AuthRedirectHandler />
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />

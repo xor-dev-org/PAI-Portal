@@ -19,10 +19,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ po }) => {
   const deliveryBadge = formatDeliveryBadge(getDaysDelta(requiredDeliveryDate));
 
   return (
-    <Stack spacing={1} p={1}>
-      <Paper variant="outlined" sx={{ p: 1 }}>
-        <Typography variant="subtitle2" sx={{ mb: 0 }}>Purchase Order Details</Typography>
-        <Grid container rowSpacing={1} columnSpacing={1}>
+    <Stack spacing={2} p={2}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Purchase Order Details</Typography>
+        <Grid container rowSpacing={2} columnSpacing={3}>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">PO Number</Typography><Typography variant="body2">{po.po_number || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Order Type</Typography><Typography variant="body2">{po.source_system || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Required Delivery</Typography><Stack direction="row" spacing={1}><Typography variant="body2">{formatDateForDisplay(requiredDeliveryDate)}</Typography><Chip label={deliveryBadge.label} size="small" color={deliveryBadge.color} variant="outlined" sx={{border: 'none'}} /></Stack></Grid>
@@ -33,9 +33,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ po }) => {
         </Grid>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1 }}>
-        <Typography variant="subtitle2" sx={{ mb: 0 }}>Supplier Details</Typography>
-        <Grid container rowSpacing={1} columnSpacing={3}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Supplier Details</Typography>
+        <Grid container rowSpacing={2} columnSpacing={3}>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Supplier</Typography><Stack direction="row" spacing={1} alignItems="center"><Avatar sx={{ width: 24, height: 24 }}>{(po.supplier_name || '?').charAt(0)}</Avatar><Typography variant="body2">{po.supplier_name || '-'}</Typography></Stack></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Email</Typography><Typography variant="body2">{po.supplier_email || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Supplier Code</Typography><Typography variant="body2">{po.supplier_id || '-'}</Typography></Grid>
@@ -44,18 +44,18 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ po }) => {
         </Grid>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1 }}>
-        <Typography variant="subtitle2" sx={{ mb: 0 }}>Shipment Details</Typography>
-        <Grid container rowSpacing={1} columnSpacing={3}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Shipment Details</Typography>
+        <Grid container rowSpacing={2} columnSpacing={3}>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Incoterm</Typography><Typography variant="body2">{po.po_details?.shipment_details?.incoterms || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Phone</Typography><Typography variant="body2">{po.po_details?.buyer_details?.telephone || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Address</Typography><Typography variant="body2">{po.po_details?.shipment_details?.address || '-'}</Typography></Grid>
         </Grid>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1 }}>
-        <Typography variant="subtitle2" sx={{ mb: 0 }}>Billing Details</Typography>
-        <Grid container rowSpacing={1} columnSpacing={3}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Billing Details</Typography>
+        <Grid container rowSpacing={2} columnSpacing={3}>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Send invoice to</Typography><Typography variant="body2">{po.po_details?.billing_details?.send_invoice_to || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Bill To Address</Typography><Typography variant="body2">{po.po_details?.billing_details?.bill_to_address || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Payment Terms</Typography><Typography variant="body2">{po.payment_terms || '-'}</Typography></Grid>
@@ -64,9 +64,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ po }) => {
         </Grid>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1 }}>
-        <Typography variant="subtitle2" sx={{ mb: 0 }}>Additional Information</Typography>
-        <Grid container rowSpacing={1} columnSpacing={3}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Additional Information</Typography>
+        <Grid container rowSpacing={2} columnSpacing={3}>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Cost Center</Typography><Typography variant="body2">{po.po_details?.buyer_details?.buyer || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">PO Owner</Typography><Typography variant="body2">{po.procurement_specialist_id || '-'}</Typography></Grid>
           <Grid item xs={12} sm={6} md={3}><Typography variant="caption" color="text.secondary">Notes</Typography><Typography variant="body2">{po.mrp_exceptions || '-'}</Typography></Grid>
