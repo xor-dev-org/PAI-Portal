@@ -49,6 +49,12 @@ class ErrorBoundary extends Component<Props, State> {
     });
   };
 
+  handleGoHome = (): void => {
+    this.handleReset();
+    window.history.pushState({}, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
@@ -90,7 +96,7 @@ class ErrorBoundary extends Component<Props, State> {
               <Button variant="contained" onClick={this.handleReset}>
                 Try Again
               </Button>
-              <Button variant="outlined" onClick={() => (window.location.href = '/')}>
+              <Button variant="outlined" onClick={this.handleGoHome}>
                 Go Home
               </Button>
             </Box>

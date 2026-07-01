@@ -40,6 +40,8 @@ import { logger } from '@/services/logger';
 const DelegationPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const userId = user?.id;
+  const userRole = user?.role;
 
   // Form states
   const [selectedPO, setSelectedPO] = useState<string>('');
@@ -70,30 +72,21 @@ const DelegationPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [delegationToDelete, setDelegationToDelete] = useState<Delegation | null>(null);
 
-  // Fetch delegations when filters change
-  useEffect(() => {
-    fetchDelegations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, sortOrder, searchQuery]);
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
       // If current user is a procurement specialist, fetch only POs assigned to them
       const poFilters: POFilters = { page_size: 100 };
-      if (user?.role === UserRole.PROCUREMENT_SPECIALIST) {
-        poFilters.procurement_specialist_id = user.id;
+      if (userRole === UserRole.PROCUREMENT_SPECIALIST && userId) {
+        poFilters.procurement_specialist_id = userId;
       }
 
-      const [delegationsRes, posRes, psRes] = await Promise.all([
-        delegationService.getDelegationList({ page: 1, page_size: pageSize }),
+      const [posRes, psRes] = await Promise.all([
         purchaseOrderService.getPOList(poFilters),
         userService.getUsersByRole(UserRole.PROCUREMENT_SPECIALIST),
       ]);
 
-      // Save raw delegation list; visible filtering will be applied in fetchDelegations
-      setDelegations(delegationsRes.data);
       setPurchaseOrders(posRes.data);
       setProcurementSpecialists(psRes);
       setError(null);
@@ -104,16 +97,16 @@ const DelegationPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageSize, user]);
+  }, [pageSize, userId, userRole]);
 
   // Fetch initial data when component mounts or user changes
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData]);
 
   const fetchDelegations = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await delegationService.getDelegationList({
         page,
         page_size: pageSize,
@@ -125,19 +118,26 @@ const DelegationPage: React.FC = () => {
       let data = response.data;
 
       // If procurement specialist, limit to delegations they created or that were delegated to them
-      if (user?.role === UserRole.PROCUREMENT_SPECIALIST) {
+      if (userRole === UserRole.PROCUREMENT_SPECIALIST && userId) {
         data = data.filter(
-          (d) => d.delegated_from_id === user.id || d.delegated_to_id === user.id
+          (d) => d.delegated_from_id === userId || d.delegated_to_id === userId
         );
       }
 
       setDelegations(data);
+      setError(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       logger.error('Error fetching delegations', { error: String(err) });
       setError(error.response?.data?.detail || 'Failed to load delegations');
+    } finally {
+      setLoading(false);
     }
-  }, [page, pageSize, statusFilter, searchQuery, sortOrder, user]);
+  }, [page, pageSize, statusFilter, searchQuery, sortOrder, userId, userRole]);
+
+  useEffect(() => {
+    fetchDelegations();
+  }, [fetchDelegations]);
 
   const handleAddDelegation = async () => {
     if (!selectedPO || !delegateTo || !startDate || !endDate) {

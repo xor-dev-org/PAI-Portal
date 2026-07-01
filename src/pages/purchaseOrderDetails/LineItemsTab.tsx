@@ -13,7 +13,6 @@ import { PushPin, PushPinOutlined, Search } from '@mui/icons-material';
 
 import { LineItem } from '@/models';
 import { formatLineId } from './utils';
-import { useUserGridColumnVisibility } from '@/hooks/useUserGridColumnVisibility';
 
 type LineItemsTabProps = {
   displayedLineItems: LineItem[];
@@ -25,7 +24,6 @@ type LineItemsTabProps = {
   rowSelectionModel?: string[];
   onRowSelectionModelChange?: (selectedRowIds: string[]) => void;
   onRowClick?: (row: LineItem) => void;
-  userId?: string;
 };
 
 type LineItemsToolbarProps = {
@@ -163,18 +161,12 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
   rowSelectionModel = [],
   onRowSelectionModelChange,
   onRowClick,
-  userId
 }) => {
   const [filterModel, setFilterModel] = useState<GridFilterModel>({
     items: [],
     quickFilterValues: [],
   });
   const quickFilterValue = (filterModel.quickFilterValues || []).join(' ');
-
-  const { columnVisibilityModel, handleColumnVisibilityModelChange } = useUserGridColumnVisibility(
-    userId,
-    'po_details_line_items'
-  );
 
   return (
     <Stack spacing={1.5}>
@@ -184,19 +176,11 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
           rowHeight={35}
           getRowId={(row) => formatLineId(row)}
           columns={columns}
-          columnVisibilityModel={columnVisibilityModel}
-          onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
           checkboxSelection={checkboxSelection}
           rowSelectionModel={rowSelectionModel}
           onRowSelectionModelChange={(model) => onRowSelectionModelChange?.(model as string[])}
           onRowClick={(params) => onRowClick?.(params.row as LineItem)}
-          getRowClassName={(params) =>
-            String(params.row.line_status || '')
-              .toUpperCase()
-              .includes('HOLD')
-              ? 'line-row--disabled'
-              : ''
-          }
+          getRowClassName={(params) => (String(params.row.line_status || '').toUpperCase().includes('HOLD') ? 'line-row--disabled' : '')}
           pageSizeOptions={[10, 20, 50]}
           initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
           disableRowSelectionOnClick

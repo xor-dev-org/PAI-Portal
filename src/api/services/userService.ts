@@ -1,7 +1,11 @@
 import apiClient from '../axios';
 import { User } from '@/models';
 
-type PinType = 'po' | 'po_to_review' | 'mrp_exception' | 'po_details_lines' | 'po_details_documents';
+export type PinType = 'po' | 'po_to_review' | 'mrp_exception' | 'po_details_lines' | 'po_details_documents';
+
+type BatchPinnedRowsResponse = {
+  pinned_rows: Partial<Record<PinType, string[]>>;
+};
 
 export const userService = {
   // Get users by role
@@ -16,9 +20,27 @@ export const userService = {
     return response.data;
   },
 
-  getPinnedRows: async (userId: string, pinType: PinType = 'po'): Promise<string[]> => {
+  getPinnedRows: async (
+    userId: string,
+    pinType: PinType = 'po'
+  ): Promise<string[]> => {
     const response = await apiClient.get<{ pinned_rows: string[] }>(
       `/user-pref/pinned-rows?user_id=${userId}&pin_type=${pinType}`
+    );
+
+    return response.data.pinned_rows;
+  },
+
+  getPinnedRowsBatch: async (
+    userId: string,
+    pinTypes: PinType[]
+  ): Promise<Partial<Record<PinType, string[]>>> => {
+    const params = new URLSearchParams();
+    params.append('user_id', userId);
+    pinTypes.forEach((pinType) => params.append('pin_types', pinType));
+
+    const response = await apiClient.get<BatchPinnedRowsResponse>(
+      `/user-pref/pinned-rows/batch?${params.toString()}`
     );
 
     return response.data.pinned_rows;
@@ -46,42 +68,11 @@ export const userService = {
     return response.data.line_pinned_rows;
   },
 
-  updateLinePinnedRows: async (
-    userId: string,
-    linePinnedRows: string[]
-  ): Promise<{ line_pinned_rows: string[] }> => {
-    const response = await apiClient.put<{ line_pinned_rows: string[] }>(
-      '/user-pref/line-pinned-rows',
-      {
-        user_id: userId,
-        line_pinned_rows: linePinnedRows,
-      }
-    );
-    return response.data;
-  },
-
-  async getGridColumnVisibility(userId: string, gridKey: string): Promise<Record<string, boolean>> {
-    const response = await apiClient.get('/user-pref/grid-column-visibility', {
-      params: {
-        user_id: userId,
-        grid_key: gridKey,
-      },
-    });
-
-    return response.data?.column_visibility_model || {};
-  },
-
-  async updateGridColumnVisibility(
-    userId: string,
-    gridKey: string,
-    columnVisibilityModel: Record<string, boolean>
-  ): Promise<Record<string, boolean>> {
-    const response = await apiClient.put('/user-pref/grid-column-visibility', {
+  updateLinePinnedRows: async (userId: string, linePinnedRows: string[]): Promise<{ line_pinned_rows: string[] }> => {
+    const response = await apiClient.put<{ line_pinned_rows: string[] }>('/user-pref/line-pinned-rows', {
       user_id: userId,
-      grid_key: gridKey,
-      column_visibility_model: columnVisibilityModel,
+      line_pinned_rows: linePinnedRows,
     });
-
-    return response.data?.column_visibility_model || {};
+    return response.data;
   },
 };

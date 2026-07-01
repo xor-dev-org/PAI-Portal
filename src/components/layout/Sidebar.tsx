@@ -12,7 +12,6 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
   Receipt as ReceiptIcon,
   SwapHoriz as DelegationIcon,
   Chat as ChatIcon,
@@ -37,12 +36,12 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle, desktopOp
   const { user } = useAuth();
 
   const menuItems = [
-    {
-      text: 'Dashboard',
-      icon: <DashboardIcon />,
-      path: '/dashboard',
-      allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER],
-    },
+    // {
+    //   text: 'Dashboard',
+    //   icon: <DashboardIcon />,
+    //   path: '/dashboard',
+    //   allowedRoles: [UserRole.ADMIN, UserRole.PROCUREMENT_SPECIALIST, UserRole.SUPPLIER],
+    // },
     {
       text: 'PO Listing',
       icon: <ReceiptIcon />,
