@@ -151,8 +151,8 @@ const AppRoutes: React.FC = () => {
         />
 
         {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/purchase-orders" replace />} />
+        <Route path="*" element={<Navigate to="/purchase-orders" replace />} />
       </Routes>
     </BrowserRouter>
   );
