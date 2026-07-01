@@ -668,7 +668,7 @@ const PurchaseOrderDetails: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 2, minHeight: '100%', backgroundColor: '#ffffff' }}>
+    <Box sx={{ p: 0, minHeight: '100%', backgroundColor: '#ffffff' }}>
       <Stack spacing={2}>
         <Breadcrumbs>
           <Typography sx={{ cursor: 'pointer' }} color="primary" onClick={() => navigate(poListingRoute)}>
@@ -739,6 +739,7 @@ const PurchaseOrderDetails: React.FC = () => {
                 checkboxSelection
                 rowSelectionModel={selectedLineIds}
                 onRowSelectionModelChange={setSelectedLineIds}
+                userId={user?.id}
                 onRowClick={(row) => {
                   setSelectedLine(row);
                   setSelectedLineIds([formatLineId(row)]);
@@ -763,6 +764,7 @@ const PurchaseOrderDetails: React.FC = () => {
                 onTogglePinFilter={() => setDocumentPinFilter((prev) => (prev === 'pinned' ? 'all' : 'pinned'))}
                 pinnedDocumentIds={pinnedDocumentIds}
                 onToggleDocumentPin={toggleDocumentPin}
+                userId={user?.id}
               />
             ) : null}
           </Box>
