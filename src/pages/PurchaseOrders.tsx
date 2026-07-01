@@ -50,6 +50,7 @@ import {
   PurchaseOrderStatus,
 } from '@/models';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserGridColumnVisibility } from '@/hooks/useUserGridColumnVisibility';
 import POFilters from '@/components/common/POFilters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { usePagination } from '@/hooks/usePagination';
@@ -2313,6 +2314,35 @@ const handleSearchChange = useCallback(
   //   }
   // }, [selectedTab, pinFilter, purchaseOrders, pinnedPOs]);
 
+  const gridColumnVisibilityKey = React.useMemo(() => {
+    if (isSupplierCollaboration) {
+      if (selectedTab === 3) {
+        return 'supplier_exceptions_alerts';
+      }
+
+      if (selectedTab === 2) {
+        return 'supplier_action_required';
+      }
+
+      return 'supplier_all_open_po';
+    }
+
+    if (selectedTab === 3) {
+      return 'ps_mrp_exception';
+    }
+
+    if (selectedTab === 2) {
+      return 'ps_po_to_review';
+    }
+
+    return 'ps_all_open_po';
+  }, [isSupplierCollaboration, selectedTab]);
+
+  const { columnVisibilityModel, handleColumnVisibilityModelChange } = useUserGridColumnVisibility(
+    user?.id,
+    gridColumnVisibilityKey
+  );
+
   if (loading && purchaseOrders.length === 0) {
     return <LoadingSpinner message="Loading purchase orders..." />;
   }
@@ -2432,6 +2462,8 @@ const handleSearchChange = useCallback(
           rowSelectionModel={selectedRowIds}
           onRowSelectionModelChange={(model) => setSelectedRowIds(model)}
           disableRowSelectionOnClick={!isLineItemTab}
+          columnVisibilityModel={columnVisibilityModel}
+          onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
           sortingMode="server"
           sortingOrder={['asc', 'desc', null]}
           sortModel={dataGridSortModel}

@@ -5,6 +5,7 @@ import { PushPin, PushPinOutlined } from '@mui/icons-material';
 
 import { DocsRow } from './types';
 import { buildDocumentColumns } from './gridColumns';
+import { useUserGridColumnVisibility } from '@/hooks/useUserGridColumnVisibility';
 
 type DocumentsTabProps = {
   documentsRows: DocsRow[];
@@ -20,6 +21,7 @@ type DocumentsTabProps = {
   onTogglePinFilter: () => void;
   pinnedDocumentIds: string[];
   onToggleDocumentPin: (documentId: string) => void;
+  userId?: string;
 };
 
 const DocumentsToolbar: React.FC<{
@@ -71,6 +73,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
   onTogglePinFilter,
   pinnedDocumentIds,
   onToggleDocumentPin,
+  userId
 }) => {
   const baseColumns = buildDocumentColumns({ role, onReviewDocument, onDownloadDocument, onReplaceDocument });
   const columns = useMemo<GridColDef[]>(() => [
@@ -102,6 +105,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
     ...baseColumns,
   ], [baseColumns, onToggleDocumentPin, pinnedDocumentIds]);
 
+  const { columnVisibilityModel, handleColumnVisibilityModelChange } = useUserGridColumnVisibility(
+    userId,
+    'po_details_documents'
+  );
+
   return (
     <Stack spacing={1.5}>
       <Box sx={{ height: 520 }}>
@@ -109,6 +117,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
           rows={documentsRows}
           getRowId={(row) => row.id}
           columns={columns}
+          columnVisibilityModel={columnVisibilityModel}
+          onColumnVisibilityModelChange={handleColumnVisibilityModelChange}
           checkboxSelection={checkboxSelection}
           rowSelectionModel={rowSelectionModel}
           onRowSelectionModelChange={(model) => onRowSelectionModelChange?.(model as string[])}

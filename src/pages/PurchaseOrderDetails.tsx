@@ -739,6 +739,7 @@ const PurchaseOrderDetails: React.FC = () => {
                 checkboxSelection
                 rowSelectionModel={selectedLineIds}
                 onRowSelectionModelChange={setSelectedLineIds}
+                userId={user?.id}
                 onRowClick={(row) => {
                   setSelectedLine(row);
                   setSelectedLineIds([formatLineId(row)]);
@@ -763,6 +764,7 @@ const PurchaseOrderDetails: React.FC = () => {
                 onTogglePinFilter={() => setDocumentPinFilter((prev) => (prev === 'pinned' ? 'all' : 'pinned'))}
                 pinnedDocumentIds={pinnedDocumentIds}
                 onToggleDocumentPin={toggleDocumentPin}
+                userId={user?.id}
               />
             ) : null}
           </Box>
