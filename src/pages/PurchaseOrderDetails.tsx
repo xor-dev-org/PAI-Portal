@@ -668,7 +668,7 @@ const PurchaseOrderDetails: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 2, minHeight: '100%', backgroundColor: '#ffffff' }}>
+    <Box sx={{ p: 0, minHeight: '100%', backgroundColor: '#ffffff' }}>
       <Stack spacing={2}>
         <Breadcrumbs>
           <Typography sx={{ cursor: 'pointer' }} color="primary" onClick={() => navigate(poListingRoute)}>

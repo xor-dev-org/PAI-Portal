@@ -651,7 +651,6 @@ Password123
 ---
 
 ## Database
-- MongoDB
 - PostgreSQL
 
 ---
