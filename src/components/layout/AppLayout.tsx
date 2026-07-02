@@ -51,7 +51,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         }}
       >
         <Toolbar />
-        <Container maxWidth="xl" sx={{ mt: 4, mb: 1, p:0 }}>
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 1, p:0 }} style={{ paddingLeft:"15px", paddingRight:"15px", marginTop:"15px" }}>
           {children}
         </Container>
       </Box>

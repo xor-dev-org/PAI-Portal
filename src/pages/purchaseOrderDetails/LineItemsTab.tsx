@@ -170,7 +170,7 @@ const LineItemsTab: React.FC<LineItemsTabProps> = ({
 
   return (
     <Stack spacing={1.5}>
-      <Box sx={{ height: 520 }}>
+      <Box sx={{ height: '68vh' }}>
         <DataGrid
           rows={displayedLineItems}
           rowHeight={35}

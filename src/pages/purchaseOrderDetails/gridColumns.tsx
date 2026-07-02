@@ -113,14 +113,28 @@ export const buildLineColumns = ({
       },
     },
     {
-      field: 'po_line',
+      field: 'poline_no',
       headerName: 'PO Line',
       width: 84,
       valueGetter: (_, row: LineItem) => formatLineId(row),
     },
-    { field: 'line_number', headerName: 'Schedule Line', width: 92 },
+    // { field: 'line_number', headerName: 'Schedule Line', width: 92 },
     { field: 'material_code', headerName: 'Material No', width: 108 },
-    { field: 'description', headerName: 'Short Description', flex: 1, width: 200 },
+    { field: 'description', headerName: 'Short Description', width: 110,
+              renderHeader: () => (
+                <Typography
+                  variant="body2"
+                  textAlign="center"
+                  sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                    fontWeight: 600,
+                  }}
+                >
+                  Short Description
+                </Typography>
+              ),
+     },
     {
       field: 'quantity',
       headerName: 'Qty',
@@ -132,11 +146,24 @@ export const buildLineColumns = ({
     {
       field: 'supplier_confirmed_quantity',
       headerName: 'Supplier Confirmed Qty',
-      width: 96,
+      width: 120,
       type: 'number',
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => params.value || '--',
+      renderHeader: () => (
+                <Typography
+                  variant="body2"
+                  textAlign="center"
+                  sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                    fontWeight: 600,
+                  }}
+                >
+                  Supplier Confirmed Qty
+                </Typography>
+              ),
     },
     { field: 'unit', headerName: 'UOM', width: 58, align: 'center', headerAlign: 'center',renderCell: (params) => params.value || '--', },
     {
@@ -161,6 +188,19 @@ export const buildLineColumns = ({
           {params.value ?? '--'}
         </Typography>
       ),
+      renderHeader: () => (
+                <Typography
+                  variant="body2"
+                  textAlign="center"
+                  sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                    fontWeight: 600,
+                  }}
+                >
+                  Updated Unit Price
+                </Typography>
+              ),
     },
     {
       field: 'net_value',
@@ -183,7 +223,7 @@ export const buildLineColumns = ({
     {
       field: 'updated_total',
       headerName: 'Updated Total',
-      width: 60,
+      width: 80,
       renderCell: (params: GridRenderCellParams<LineItem>) => {
         const row = params.row;
         const curr = Number(row.net_value || 0);
@@ -193,12 +233,38 @@ export const buildLineColumns = ({
           <Typography variant="body2">{Number.isFinite(diff) ? diff.toFixed(2) : '-'}</Typography>
         );
       },
+      renderHeader: () => (
+                <Typography
+                  variant="body2"
+                  textAlign="center"
+                  sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                    fontWeight: 600,
+                  }}
+                >
+                  Updated Total
+                </Typography>
+              ),
     },
     {
       field: 'required_in_house_date',
       headerName: 'Need By Date',
       width: 100,
       renderCell: renderNeedByCell,
+      renderHeader: () => (
+                <Typography
+                  variant="body2"
+                  textAlign="center"
+                  sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                    fontWeight: 600,
+                  }}
+                >
+                  Need By Date
+                </Typography>
+              ),
     },
     { field: 'updated_delivery_date', headerName: 'Revised Date', width: 100,renderCell: (params) => params.value || '--', },
     {
@@ -206,6 +272,19 @@ export const buildLineColumns = ({
       headerName: 'Supplier Confirmation Date',
       width: 140,
       renderCell: (params) => params.value || '--',
+      renderHeader: () => (
+                <Typography
+                  variant="body2"
+                  textAlign="center"
+                  sx={{
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                    fontWeight: 600,
+                  }}
+                >
+                  Supplier Confirmation Date
+                </Typography>
+              ),
     },
     {
       field: 'concession',
@@ -313,7 +392,7 @@ export const buildLineColumns = ({
 export const buildSupplierLineColumns = (lineColumns: GridColDef[], includeConcession = false) => {
   const fields = [
     'pin',
-    'po_line',
+    'poline_no',
     'material_code',
     'line_status',
     'description',

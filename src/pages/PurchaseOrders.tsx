@@ -1062,25 +1062,51 @@ const handleSearchChange = useCallback(
       {
         field: 'revision_changes',
         headerName: 'Revision Changes',
-        width: 60,
+        width: 80,
+        renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Revision Changes
+          </Typography>
+        ),
       },
       {
         field: 'line_items',
         headerName: 'Line Items',
         width: 60,
         renderCell: (params) => params.value.length,
+        renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Line Items
+          </Typography>
+        ),
       },
       {
         field: 'supplier_id',
         headerName: 'Supplier Number',
-        width: 120,
+        width: 140,
       },
       ...(user?.role !== 'SUPPLIER'
         ? [
             {
               field: 'supplier_name',
               headerName: 'Supplier',
-              width: 180,
+              width: 200,
             },
           ]
         : []),
@@ -1104,13 +1130,13 @@ const handleSearchChange = useCallback(
       {
         field: 'site',
         headerName: 'Flowserve site',
-        width: 70,
+        width: 120,
       },
 
       {
         field: 'status',
         headerName: 'Status',
-        width: 140,
+        width: 100,
         renderCell: (params) => (
           <Chip
             variant="outlined"
@@ -1266,13 +1292,26 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'schedule_line',
-        headerName: 'Scedule line',
-        width: 55,
+        headerName: 'Schedule Line',
+        width: 80,
         renderCell: (params) => {
           const scheduleLine = params.row.schedule_line ?? params.row.po_line_revision_no ?? '--';
 
           return scheduleLine;
         },
+        renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Schedule Line
+          </Typography>
+        ),
       },
       {
         field: 'material_code',
@@ -1301,7 +1340,7 @@ const handleSearchChange = useCallback(
       {
         field: 'updated_quantity',
         headerName: 'Supplier Confirmed QTY',
-        width: 65,
+        width: 150,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
             <Typography
@@ -1316,6 +1355,19 @@ const handleSearchChange = useCallback(
           ) : (
             '--'
           ),
+        renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Supplier Confirmed QTY
+          </Typography>
+        ),
       },
       {
         field: 'unit_price',
@@ -1347,6 +1399,19 @@ const handleSearchChange = useCallback(
           ) : (
             '--'
           ),
+                renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Update Unit Price
+          </Typography>
+        ),
       },
       {
         field: 'net_value',
@@ -1356,7 +1421,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_net_value',
-        headerName: 'Updated T...',
+        headerName: 'Updated Total',
         width: 105,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
@@ -1372,6 +1437,19 @@ const handleSearchChange = useCallback(
           ) : (
             '--'
           ),
+        renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Updated Total
+          </Typography>
+        ),
       },
       {
         field: 'required_in_house_date',
@@ -1401,7 +1479,7 @@ const handleSearchChange = useCallback(
       {
         field: 'supplier_confirmation_date',
         headerName: 'Supplier Confirmation Date',
-        width: 130,
+        width: 160,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
             <Typography
@@ -1416,6 +1494,19 @@ const handleSearchChange = useCallback(
           ) : (
             '--'
           ),
+                renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Supplier Confirmation Date
+          </Typography>
+        ),
       },
       {
         field: 'concession',
@@ -1439,7 +1530,7 @@ const handleSearchChange = useCallback(
       {
         field: 'documents',
         headerName: 'Document',
-        width: 70,
+        width: 90,
         sortable: false,
         filterable: false,
         renderCell: (params) => {
@@ -1543,13 +1634,26 @@ const handleSearchChange = useCallback(
       {
         field: 'schedule_line',
         headerName: 'Schedule line',
-        width: 55,
+        width: 80,
         renderCell: (params) => {
           const scheduleLine =
             params.row.schedule_line ?? params.row.po_line_revision_no ?? params.row.line_number;
 
           return scheduleLine ?? '--';
         },
+        renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Schedule Line
+          </Typography>
+        ),
       },
       {
         field: 'material_code',
@@ -1578,7 +1682,7 @@ const handleSearchChange = useCallback(
       {
         field: 'updated_quantity',
         headerName: 'Supplier Confirmed Qty',
-        width: 100,
+        width: 130,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
             <Typography
@@ -1593,6 +1697,19 @@ const handleSearchChange = useCallback(
           ) : (
             '--'
           ),
+            renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Supplier Confirmed Qty
+          </Typography>
+        ),
       },
       {
         field: 'unit_price',
@@ -1618,6 +1735,19 @@ const handleSearchChange = useCallback(
           ) : (
             '--'
           ),
+          renderHeader: () => (
+            <Typography
+              variant="body2"
+              textAlign="center"
+              sx={{
+                whiteSpace: 'normal',
+                lineHeight: 1.2,
+                fontWeight: 600,
+              }}
+            >
+              Revised Unit Price
+            </Typography>
+          ),
       },
       {
         field: 'net_value',
@@ -1627,7 +1757,7 @@ const handleSearchChange = useCallback(
       },
       {
         field: 'updated_net_value',
-        headerName: 'Revised TotalAmount',
+        headerName: 'Revised Total Amount',
         width: 120,
         renderCell: (params) =>
           hasCellValue(params.value) ? (
@@ -1642,6 +1772,19 @@ const handleSearchChange = useCallback(
             </Typography>
           ) : (
             '--'
+          ),
+                    renderHeader: () => (
+            <Typography
+              variant="body2"
+              textAlign="center"
+              sx={{
+                whiteSpace: 'normal',
+                lineHeight: 1.2,
+                fontWeight: 600,
+              }}
+            >
+              Revised Total Amount
+            </Typography>
           ),
       },
       {
@@ -1784,12 +1927,25 @@ const handleSearchChange = useCallback(
      },
      {
        field: 'po_line_revision_no',
-       headerName: 'Rev.',
-       width: 60,
+       headerName: 'Revision No.',
+       width: 70,
        renderCell: (params) => {
          const value = params.value ?? params.row.revision_changes ?? '--';
          return value;
        },
+      renderHeader: () => (
+        <Typography
+          variant="body2"
+          textAlign="center"
+          sx={{
+            whiteSpace: 'normal',
+            lineHeight: 1.2,
+            fontWeight: 600,
+          }}
+        >
+          Revision No.
+        </Typography>
+      ),
      },
      {
        field: 'line_number',
@@ -1834,7 +1990,7 @@ const handleSearchChange = useCallback(
      },
      {
        field: 'unit',
-       headerName: 'UO...',
+       headerName: 'Unit',
        width: 60,
        renderCell: (params) => params.value || '--',
      },
@@ -1846,8 +2002,8 @@ const handleSearchChange = useCallback(
      },
      {
        field: 'updated_quantity',
-       headerName: 'Re...',
-       width: 60,
+       headerName: 'Revised Qty',
+       width: 70,
        renderCell: (params) =>
          hasCellValue(params.value) ? (
            <Typography
@@ -1862,6 +2018,19 @@ const handleSearchChange = useCallback(
          ) : (
            '--'
          ),
+          renderHeader: () => (
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            }}
+          >
+            Revised Qty
+          </Typography>
+        ),
      },
      {
        field: 'unit_price',
@@ -1877,7 +2046,7 @@ const handleSearchChange = useCallback(
      },
      {
        field: 'updated_net_value',
-       headerName: 'Revised To...',
+       headerName: 'Revised Value',
        width: 115,
        renderCell: (params) =>
          hasCellValue(params.value) ? (
@@ -1921,9 +2090,22 @@ const handleSearchChange = useCallback(
      },
      {
        field: 'site',
-       headerName: 'Flowserve Sit...',
-       width: 130,
+       headerName: 'Flowserve Site',
+       width: 100,
        renderCell: (params) => params.value || '--',
+         renderHeader: () => (
+        <Typography
+          variant="body2"
+          textAlign="center"
+          sx={{
+            whiteSpace: 'normal',
+            lineHeight: 1.2,
+            fontWeight: 600,
+          }}
+        >
+          Flowserve Site
+        </Typography>
+  ),
      },
      {
        field: 'status',
@@ -1947,7 +2129,7 @@ const handleSearchChange = useCallback(
      {
        field: 'documents',
        headerName: 'Documents',
-       width: 70,
+       width: 100,
        sortable: false,
        filterable: false,
        renderCell: (params) => {
@@ -2011,7 +2193,7 @@ const handleSearchChange = useCallback(
           return { ...column, headerName: 'Supplier Name' };
         }
         if (field === 'revision_changes') {
-          return { ...column, headerName: 'Rev', width: 60 };
+          return { ...column, headerName: 'Rev', width: 90 };
         }
         if (field === 'buyer_email') {
           return { ...column, headerName: 'Buyer Email Id' };
@@ -2438,7 +2620,7 @@ const handleSearchChange = useCallback(
         </Alert>
       )}
       {/* TODO: Optimise this block if selected */}
-      <Box sx={{ height: appliedFilters.length > 0 ? '76vh' : '78vh', width: '100%' }}>
+      <Box sx={{ height: appliedFilters.length > 0 ? '78vh' : '80vh', width: '100%' }}>
         <DataGrid
           key={`po-grid-${selectedTab}`}
           rows={currentRows}

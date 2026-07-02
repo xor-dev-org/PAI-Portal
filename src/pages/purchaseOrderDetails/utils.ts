@@ -9,10 +9,10 @@ export const getTabs = (role?: string) => {
   return ['OVERVIEW', 'LINE ITEM', 'HISTORY', 'DOCUMENT'];
 };
 
-export const formatLineId = (line?: LineItem) => {
+export const formatLineId = (line?: Partial<LineItem> | null): string => {
   if (!line) return '';
-  if (line.id) return String(line.id);
-  return String(line.line_number || '').padStart(5, '0');
+
+  return String(line.line_number ?? '');
 };
 
 export const formatActionLabel = (action?: string) => {
