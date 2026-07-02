@@ -148,6 +148,7 @@ export interface PurchaseOrder {
   supplier_id: string;
   supplier_name: string;
   supplier_email?: string;
+  supplier_address?: string;
   site?: string;
   procurement_specialist_id: string;
   delegated_user_id: string;
@@ -159,6 +160,8 @@ export interface PurchaseOrder {
   mrp_exceptions: string;
   created_date: string;
   revision_changes: number;
+  incoterm?: string;
+  incoterm_named_place?: string;
   line_items: LineItem[];
   po_details?: PODetailsPanel;
   status_history?: POStatusHistory[];
